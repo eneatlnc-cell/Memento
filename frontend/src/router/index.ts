@@ -70,6 +70,13 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+
+  // Fire-and-forget: validate token in background without blocking navigation
+  if (to.meta.requiresAuth && authStore.isAuthenticated) {
+    authStore.fetchUser().catch(() => {
+      authStore.logout()
+    })
+  }
 })
 
 export default router

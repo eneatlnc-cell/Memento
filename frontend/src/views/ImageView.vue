@@ -99,6 +99,7 @@ function openViewer(images: string[], index: number) {
 }
 
 function downloadImage(url: string) {
+  if (!url || (!url.startsWith('https://') && !url.startsWith('http://'))) return
   const a = document.createElement('a')
   a.href = url
   a.download = `image-${Date.now()}.png`

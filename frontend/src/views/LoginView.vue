@@ -85,7 +85,8 @@ async function handleSubmit() {
         password: form.password,
       })
     }
-    const redirect = (route.query.redirect as string) || '/'
+    const rawRedirect = route.query.redirect as string
+    const redirect = (rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) ? rawRedirect : '/'
     router.push(redirect)
   } catch (err: any) {
     const msg = err?.response?.data?.detail || err?.response?.data?.message || '操作失败，请重试'

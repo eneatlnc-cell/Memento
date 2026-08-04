@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = response.data.access_token
     user.value = response.data.user
     localStorage.setItem('auth_token', response.data.access_token)
-    localStorage.setItem('auth_user', JSON.stringify(response.data.user))
+    localStorage.setItem('auth_user', JSON.stringify({ username: response.data.user.username, role: response.data.user.role }))
   }
 
   async function register(data: RegisterRequest) {
@@ -38,14 +38,14 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = response.data.access_token
     user.value = response.data.user
     localStorage.setItem('auth_token', response.data.access_token)
-    localStorage.setItem('auth_user', JSON.stringify(response.data.user))
+    localStorage.setItem('auth_user', JSON.stringify({ username: response.data.user.username, role: response.data.user.role }))
   }
 
   async function fetchUser() {
     try {
       const response = await authApi.getMe()
       user.value = response.data
-      localStorage.setItem('auth_user', JSON.stringify(response.data))
+      localStorage.setItem('auth_user', JSON.stringify({ username: response.data.username, role: response.data.role }))
     } catch {
       logout()
     }

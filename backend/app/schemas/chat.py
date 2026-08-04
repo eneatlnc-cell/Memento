@@ -21,7 +21,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     """Request body for chat completion."""
 
-    messages: list[ChatMessage] = Field(..., min_length=1)
+    messages: list[ChatMessage] = Field(..., min_length=1, max_length=100)
     model: str = Field(default="agnes-chat-v1")
     stream: bool = True
     provider_id: str | None = Field(default=None)

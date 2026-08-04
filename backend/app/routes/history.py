@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,12 @@ from app.schemas.generation import GenerationListResponse, GenerationResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/history", tags=["History"])
+
+
+class BatchDeleteRequest(BaseModel):
+    """Request body for batch deletion of generation records."""
+
+    ids: list[str] = Field(..., min_length=1, max_length=100)
 
 
 @router.get("", response_model=GenerationListResponse)
@@ -85,14 +92,14 @@ async def delete_history_item(
 
 @router.post("/batch-delete", status_code=status.HTTP_200_OK)
 async def batch_delete_history(
-    ids: list[str],
+    body: BatchDeleteRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Batch delete generation records."""
     result = await db.execute(
         select(Generation).where(
-            Generation.id.in_(ids),
+            Generation.id.in_(body.ids),
             Generation.user_id == current_user.id,
         )
     )

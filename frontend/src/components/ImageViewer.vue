@@ -87,6 +87,7 @@ function resetView() {
 }
 
 async function downloadImage() {
+  if (!currentImage.value || (!currentImage.value.startsWith('https://') && !currentImage.value.startsWith('http://'))) return
   try {
     const response = await fetch(currentImage.value)
     const blob = await response.blob()

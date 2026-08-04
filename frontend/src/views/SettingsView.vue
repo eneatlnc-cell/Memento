@@ -51,7 +51,7 @@ async function handleFormSubmit(data: ProviderFormData) {
     editingProvider.value = null
     await appStore.fetchProviders()
   } catch (err) {
-    console.error('Failed to save provider:', err)
+    if (import.meta.env.DEV) console.error('Failed to save provider:', err)
     throw err
   }
 }
@@ -62,7 +62,7 @@ async function handleDelete(provider: APIProvider) {
     await providersApi.deleteProvider(provider.id)
     await appStore.fetchProviders()
   } catch (err) {
-    console.error('Failed to delete provider:', err)
+    if (import.meta.env.DEV) console.error('Failed to delete provider:', err)
   }
 }
 
@@ -70,7 +70,7 @@ async function handleSetDefault(provider: APIProvider) {
   try {
     await appStore.setCurrentProvider(provider)
   } catch (err) {
-    console.error('Failed to set default:', err)
+    if (import.meta.env.DEV) console.error('Failed to set default:', err)
   }
 }
 
@@ -190,15 +190,8 @@ onMounted(() => {
                 <span class="flex items-center gap-1">
                   API Key:
                   <code class="text-dark-300 font-mono">
-                    {{ showApiKeys.has(provider.id) ? provider.api_key : maskApiKey(provider.api_key) }}
+                    {{ maskApiKey(provider.api_key || '') }}
                   </code>
-                  <button
-                    class="text-dark-500 hover:text-dark-300"
-                    @click="toggleApiKey(provider.id)"
-                  >
-                    <Eye v-if="!showApiKeys.has(provider.id)" class="w-3.5 h-3.5" />
-                    <EyeOff v-else class="w-3.5 h-3.5" />
-                  </button>
                 </span>
               </div>
             </div>

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import urllib.parse
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -12,6 +14,53 @@ from app.core.security import decrypt_api_key
 from app.models.api_provider import APIProvider
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# SSRF Protection
+# ---------------------------------------------------------------------------
+
+_PRIVATE_RANGES_V4 = [
+    ipaddress.IPv4Network("127.0.0.0/8"),
+    ipaddress.IPv4Network("10.0.0.0/8"),
+    ipaddress.IPv4Network("172.16.0.0/12"),
+    ipaddress.IPv4Network("192.168.0.0/16"),
+    ipaddress.IPv4Network("169.254.0.0/16"),
+]
+
+_PRIVATE_RANGES_V6 = [
+    ipaddress.IPv6Network("::1"),
+    ipaddress.IPv6Network("fc00::/7"),
+]
+
+
+def _validate_base_url(base_url: str) -> None:
+    """Validate that base_url does not point to a private/internal IP address.
+
+    Raises:
+        ValueError: If the URL resolves to a private IP address.
+    """
+    parsed = urllib.parse.urlparse(base_url)
+    host = parsed.hostname
+    if not host:
+        raise ValueError(f"Cannot parse host from base_url: {base_url!r}")
+
+    if host.lower() == "localhost":
+        raise ValueError(f"base_url resolves to localhost: {base_url!r}")
+
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        # Not a literal IP — DNS resolution is not performed; allow through.
+        return
+
+    if isinstance(addr, ipaddress.IPv4Address):
+        for net in _PRIVATE_RANGES_V4:
+            if addr in net:
+                raise ValueError(f"base_url resolves to private IP: {base_url!r}")
+    elif isinstance(addr, ipaddress.IPv6Address):
+        for net in _PRIVATE_RANGES_V6:
+            if addr in net:
+                raise ValueError(f"base_url resolves to private IP: {base_url!r}")
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -60,6 +109,7 @@ async def generate_image(
     """
     api_key = _get_api_key(provider)
     base = provider.base_url or DOMESTIC_BASE
+    _validate_base_url(base)
     url = f"{base.rstrip('/')}/images/generations"
 
     payload: dict[str, Any] = {
@@ -100,6 +150,7 @@ async def generate_video(
     """Submit a video generation task. Returns a dict with task_id/video_id."""
     api_key = _get_api_key(provider)
     base = provider.base_url or DOMESTIC_BASE
+    _validate_base_url(base)
     url = f"{base.rstrip('/')}/videos"
 
     payload: dict[str, Any] = {
@@ -134,6 +185,7 @@ async def query_video(
     """Query the status of a video generation task."""
     api_key = _get_api_key(provider)
     base = provider.poll_url or provider.base_url or DOMESTIC_BASE
+    _validate_base_url(base)
     url = f"{base.rstrip('/')}/videos/{video_id}"
 
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
@@ -162,6 +214,7 @@ async def chat_completion(
     """
     api_key = _get_api_key(provider)
     base = provider.base_url or DOMESTIC_BASE
+    _validate_base_url(base)
     url = f"{base.rstrip('/')}/chat/completions"
 
     payload: dict[str, Any] = {

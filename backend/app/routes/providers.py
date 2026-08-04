@@ -34,7 +34,7 @@ def _to_response(provider: APIProvider) -> ProviderResponse:
     """Convert a model to a response with masked API key."""
     data = ProviderResponse.model_validate(provider)
     if provider.api_key_encrypted:
-        data.api_key_masked = mask_api_key(provider.api_key_encrypted[:32])
+        data.api_key_masked = mask_api_key(provider.api_key_encrypted[:20])
     return data
 
 

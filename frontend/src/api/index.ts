@@ -102,16 +102,14 @@ export const chatApi = {
     const controller = new AbortController()
     const token = localStorage.getItem('auth_token')
 
-    const params = new URLSearchParams()
-    params.append('message', message)
-    if (historyId) params.append('history_id', String(historyId))
-
-    fetch(`/api/chat/send?${params.toString()}`, {
+    fetch('/api/chat/send', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
         Accept: 'text/event-stream',
       },
+      body: JSON.stringify({ message, history_id: historyId }),
       signal: controller.signal,
     })
       .then(async (response) => {

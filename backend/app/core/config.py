@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from typing import ClassVar
 
 from pydantic import Field, ValidationInfo, field_validator
@@ -26,7 +25,7 @@ class Settings(BaseSettings):
 
     # JWT
     JWT_SECRET: str = Field(
-        default_factory=lambda: secrets.token_hex(32),
+        default="",
         description="Secret key for JWT signing",
     )
     JWT_ALGORITHM: str = Field(
@@ -40,7 +39,7 @@ class Settings(BaseSettings):
 
     # Encryption
     ENCRYPTION_KEY: str = Field(
-        default_factory=lambda: secrets.token_hex(32),
+        default="",
         description="Fernet encryption key for API key storage",
     )
 
@@ -50,7 +49,7 @@ class Settings(BaseSettings):
         description="Default admin username",
     )
     DEFAULT_ADMIN_PASSWORD: str = Field(
-        default="admin123",
+        default="",
         description="Default admin password (change on first login)",
     )
     DEFAULT_ADMIN_EMAIL: str = Field(
@@ -62,16 +61,33 @@ class Settings(BaseSettings):
     @classmethod
     def validate_jwt_secret(cls, v: str, info: ValidationInfo) -> str:
         """Validate JWT_SECRET is non-empty and at least 32 characters."""
-        if not v or len(v) < 32:
-            raise ValueError("JWT_SECRET must be non-empty and at least 32 characters long")
+        if not v:
+            raise ValueError(
+                "JWT_SECRET must be set. Generate: "
+                "python -c 'import secrets; print(secrets.token_hex(32))'"
+            )
+        if len(v) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 characters long")
         return v
 
     @field_validator("ENCRYPTION_KEY")
     @classmethod
     def validate_encryption_key(cls, v: str, info: ValidationInfo) -> str:
-        """Validate ENCRYPTION_KEY is non-empty."""
+        """Validate ENCRYPTION_KEY is non-empty and has valid length."""
         if not v:
             raise ValueError("ENCRYPTION_KEY must be non-empty")
+        if len(v) not in (44, 64):
+            raise ValueError(
+                "ENCRYPTION_KEY must be a 44-char Fernet key or 64-char hex string"
+            )
+        return v
+
+    @field_validator("DEFAULT_ADMIN_PASSWORD")
+    @classmethod
+    def validate_default_admin_password(cls, v: str, info: ValidationInfo) -> str:
+        """Validate DEFAULT_ADMIN_PASSWORD is non-empty."""
+        if not v:
+            raise ValueError("DEFAULT_ADMIN_PASSWORD must be set")
         return v
 
 

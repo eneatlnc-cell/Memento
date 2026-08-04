@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -41,14 +42,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict) -> str:
     """Create a JWT access token with expiration."""
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
-    to_encode.update({"exp": expire})
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "nbf": now,
+        "jti": str(uuid.uuid4()),
+    })
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
     """Decode and validate a JWT access token. Returns the payload."""
-    return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    try:
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except jwt.PyJWTError:
+        raise ValueError("Invalid or expired token")
 
 
 # ---------------------------------------------------------------------------
@@ -58,10 +68,9 @@ def decode_access_token(token: str) -> dict:
 def _get_fernet() -> Fernet:
     """Get a Fernet instance from the configured encryption key.
 
-    Handles three key formats:
+    Handles two key formats:
     - 44 chars: already a valid Fernet (url-safe base64-encoded) key
     - 64 hex chars: convert from hex to base64
-    - Other: auto-generate a new key (warning: encryption is non-persistent)
     """
     key = settings.ENCRYPTION_KEY
 
@@ -76,16 +85,13 @@ def _get_fernet() -> Fernet:
             fernet_key = base64.urlsafe_b64encode(raw).decode("utf-8")
             return Fernet(fernet_key.encode("utf-8"))
         except (binascii.Error, ValueError):
-            logger.warning("Invalid hex key, falling back to auto-generated Fernet key")
-    else:
-        logger.warning(
-            "ENCRYPTION_KEY has unexpected length %d; generating a new Fernet key. "
-            "Encrypted data will not survive restarts.",
-            len(key),
-        )
+            raise ValueError(
+                "ENCRYPTION_KEY must be a 44-char Fernet key or 64-char hex string"
+            )
 
-    # Auto-generate a key (non-persistent across restarts)
-    return Fernet(Fernet.generate_key())
+    raise ValueError(
+        "ENCRYPTION_KEY must be a 44-char Fernet key or 64-char hex string"
+    )
 
 
 def encrypt_api_key(api_key: str) -> str:
@@ -107,10 +113,10 @@ def decrypt_api_key(encrypted: str) -> str:
 def mask_api_key(key: str) -> str:
     """Return a masked version of an API key.
 
-    Example: 'agnes-v1-abc123def4567890' -> 'agnes-****-7890'
+    Example: 'agn-abc123def4567890' -> 'agn****7890'
     """
     if len(key) <= 8:
         return "*" * len(key)
-    prefix = key[:5]
+    prefix = key[:3]
     suffix = key[-4:]
     return f"{prefix}****{suffix}"

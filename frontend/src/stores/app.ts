@@ -35,7 +35,7 @@ export const useAppStore = defineStore('app', () => {
       const response = await providersApi.getProviders()
       providers.value = response.data
     } catch (err) {
-      console.error('Failed to fetch providers:', err)
+      if (import.meta.env.DEV) console.error('Failed to fetch providers:', err)
     } finally {
       loading.value = false
     }
@@ -46,7 +46,7 @@ export const useAppStore = defineStore('app', () => {
       const response = await configApi.getConfig()
       config.value = response.data
     } catch (err) {
-      console.error('Failed to fetch config:', err)
+      if (import.meta.env.DEV) console.error('Failed to fetch config:', err)
     }
   }
 
@@ -55,7 +55,7 @@ export const useAppStore = defineStore('app', () => {
       await providersApi.setDefaultProvider(provider.id)
       await fetchProviders()
     } catch (err) {
-      console.error('Failed to set default provider:', err)
+      if (import.meta.env.DEV) console.error('Failed to set default provider:', err)
     }
   }
 

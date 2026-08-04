@@ -55,7 +55,7 @@ async function fetchHistory() {
     pagination.total_pages = response.data.total_pages
     pagination.page = response.data.page
   } catch (err) {
-    console.error('Failed to fetch history:', err)
+    if (import.meta.env.DEV) console.error('Failed to fetch history:', err)
   } finally {
     loading.value = false
   }
@@ -101,7 +101,7 @@ async function handleBatchDelete() {
     selectAll.value = false
     fetchHistory()
   } catch (err) {
-    console.error('Failed to delete:', err)
+    if (import.meta.env.DEV) console.error('Failed to delete:', err)
   }
 }
 
@@ -111,7 +111,7 @@ async function handleDelete(id: number) {
     await historyApi.deleteHistory(id)
     fetchHistory()
   } catch (err) {
-    console.error('Failed to delete:', err)
+    if (import.meta.env.DEV) console.error('Failed to delete:', err)
   }
 }
 

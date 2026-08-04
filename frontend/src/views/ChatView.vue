@@ -121,7 +121,7 @@ function handleSend() {
       }
     },
     (error: Error) => {
-      console.error('Chat SSE error:', error)
+      if (import.meta.env.DEV) console.error('Chat SSE error:', error)
       isSending.value = false
       streamingContent.value = ''
       streamingMessageId.value = ''
@@ -152,9 +152,19 @@ function newChat() {
   sidebarOpen.value = false
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 function formatMessage(content: string): string {
-  // Simple markdown-like formatting
-  return content
+  // Escape HTML first, then apply Markdown-like formatting
+  const escaped = escapeHtml(content)
+  return escaped
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-dark-800 rounded-lg p-3 my-2 overflow-x-auto text-sm"><code>$2</code></pre>')
