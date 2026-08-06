@@ -154,12 +154,12 @@ print_step "Starting backend server..."
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
-if [ -f "backend/main.py" ]; then
-    uvicorn backend.main:app --host "$HOST" --port "$PORT" --reload &
+if [ -f "backend/app/main.py" ]; then
+    uvicorn backend.app.main:app --host "$HOST" --port "$PORT" --reload &
     BACKEND_PID=$!
     print_ok "Backend server starting on http://${HOST}:${PORT} (PID: $BACKEND_PID)"
 else
-    print_warn "backend/main.py not found, skipping backend startup"
+    print_warn "backend/app/main.py not found, skipping backend startup"
     BACKEND_PID=""
 fi
 
