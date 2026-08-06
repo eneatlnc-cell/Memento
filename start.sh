@@ -148,17 +148,7 @@ else
     fi
 fi
 
-# ── Step 5: Initialize database ────────────────────────────────────
-print_step "Initializing database..."
-
-if [ -f "backend/init_db.py" ]; then
-    $PYTHON_CMD backend/init_db.py
-    print_ok "Database initialized"
-else
-    print_warn "backend/init_db.py not found, skipping database initialization"
-fi
-
-# ── Step 6: Start backend (uvicorn) ────────────────────────────────
+# ── Step 5: Start backend (uvicorn, auto-initializes database) ─────
 print_step "Starting backend server..."
 
 HOST="${HOST:-0.0.0.0}"
