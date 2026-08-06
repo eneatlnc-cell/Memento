@@ -10,8 +10,8 @@ from typing import Any
 
 import httpx
 
-from app.core.security import decrypt_api_key
-from app.models.api_provider import APIProvider
+from backend.core.security import decrypt_api_key
+from backend.models.api_provider import APIProvider
 
 logger = logging.getLogger(__name__)
 

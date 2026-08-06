@@ -10,11 +10,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from app.models.generation import Generation
-from app.models.user import User
-from app.routes.auth import get_current_user
-from app.schemas.generation import GenerationListResponse, GenerationResponse
+from backend.core.database import get_db
+from backend.models.generation import Generation
+from backend.models.user import User
+from backend.routes.auth import get_current_user
+from backend.schemas.generation import GenerationListResponse, GenerationResponse
 
 logger = logging.getLogger(__name__)
 

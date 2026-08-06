@@ -8,10 +8,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.models.user import User
-from app.routes.auth import get_current_user
-from app.schemas.chat import ChatRequest
-from app.services.chat_service import chat_stream
+from backend.models.user import User
+from backend.routes.auth import get_current_user
+from backend.schemas.chat import ChatRequest
+from backend.services.chat_service import chat_stream
 
 logger = logging.getLogger(__name__)
 

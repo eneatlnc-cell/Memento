@@ -8,10 +8,10 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import init_db
-from app.core.logging import setup_logging
-from app.middleware.request_id import RequestIDMiddleware
-from app.routes import auth, chat, config, history, images, providers, videos
+from backend.core.database import init_db
+from backend.core.logging import setup_logging
+from backend.middleware.request_id import RequestIDMiddleware
+from backend.routes import auth, chat, config, history, images, providers, videos
 
 
 @asynccontextmanager

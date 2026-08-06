@@ -9,10 +9,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import async_session_factory
-from app.models.api_provider import APIProvider
-from app.models.generation import Generation
-from app.services.agnes_client import query_video
+from backend.core.database import async_session_factory
+from backend.models.api_provider import APIProvider
+from backend.models.generation import Generation
+from backend.services.agnes_client import query_video
 
 logger = logging.getLogger(__name__)
 

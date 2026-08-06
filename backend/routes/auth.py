@@ -11,16 +11,16 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.database import get_db
-from app.core.security import (
+from backend.core.config import settings
+from backend.core.database import get_db
+from backend.core.security import (
     create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
 )
-from app.models.user import User
-from app.schemas.auth import (
+from backend.models.user import User
+from backend.schemas.auth import (
     ChangePasswordRequest,
     TokenResponse,
     UserLogin,

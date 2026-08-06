@@ -10,9 +10,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import async_session_factory
-from app.models.api_provider import APIProvider
-from app.services.agnes_client import chat_completion
+from backend.core.database import async_session_factory
+from backend.models.api_provider import APIProvider
+from backend.services.agnes_client import chat_completion
 
 logger = logging.getLogger(__name__)
 

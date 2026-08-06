@@ -12,7 +12,7 @@ import bcrypt
 import jwt
 from cryptography.fernet import Fernet
 
-from app.core.config import settings
+from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 

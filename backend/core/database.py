@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-from app.core.config import settings
+from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, Any]:
 async def init_db() -> None:
     """Create all tables and seed default data (admin user, API provider)."""
     # Import all models so they are registered on Base.metadata
-    import app.models  # noqa: F401
+    import backend.models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -70,8 +70,8 @@ async def init_db() -> None:
 
 async def _create_default_admin(session: AsyncSession) -> None:
     """Create default admin user if it does not exist."""
-    from app.models.user import User
-    from app.core.security import hash_password
+    from backend.models.user import User
+    from backend.core.security import hash_password
 
     result = await session.execute(
         select(User).where(User.username == settings.DEFAULT_ADMIN_USERNAME)
@@ -97,7 +97,7 @@ async def _create_default_admin(session: AsyncSession) -> None:
 
 async def _create_default_provider(session: AsyncSession) -> None:
     """Create default API provider (Agnes AI) if it does not exist."""
-    from app.models.api_provider import APIProvider
+    from backend.models.api_provider import APIProvider
 
     result = await session.execute(
         select(APIProvider).where(APIProvider.name == "Agnes AI")

@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from app.models.api_provider import APIProvider
-from app.models.generation import Generation
-from app.models.user import User
-from app.routes.auth import get_current_user
-from app.schemas.generation import GenerationResponse, ImageGenerationRequest
-from app.services.agnes_client import generate_image
+from backend.core.database import get_db
+from backend.models.api_provider import APIProvider
+from backend.models.generation import Generation
+from backend.models.user import User
+from backend.routes.auth import get_current_user
+from backend.schemas.generation import GenerationResponse, ImageGenerationRequest
+from backend.services.agnes_client import generate_image
 
 logger = logging.getLogger(__name__)
 
