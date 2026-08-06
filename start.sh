@@ -155,7 +155,7 @@ HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
 if [ -f "backend/app/main.py" ]; then
-    uvicorn backend.app.main:app --host "$HOST" --port "$PORT" --reload &
+    uvicorn app.main:app --app-dir backend --host "$HOST" --port "$PORT" --reload &
     BACKEND_PID=$!
     print_ok "Backend server starting on http://${HOST}:${PORT} (PID: $BACKEND_PID)"
 else
