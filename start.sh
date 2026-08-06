@@ -115,12 +115,37 @@ if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         cp .env.example .env
         print_ok ".env created from .env.example"
-        print_warn "Please review and update .env with your actual configuration values"
+
+        # ── Auto-generate security keys ─────────────────────────────
+        print_info "Generating JWT_SECRET..."
+        JWT_SECRET=$($PYTHON_CMD -c "import secrets; print(secrets.token_hex(32))")
+        sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
+        print_ok "JWT_SECRET generated"
+
+        print_info "Generating ENCRYPTION_KEY..."
+        ENCRYPTION_KEY=$($PYTHON_CMD -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+        sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$ENCRYPTION_KEY|" .env
+        print_ok "ENCRYPTION_KEY generated"
+
+        print_warn "Please review .env and set AGNES_API_KEY and DEFAULT_ADMIN_PASSWORD"
     else
         print_warn ".env.example not found, skipping .env creation"
     fi
 else
     print_ok ".env already exists"
+    # Check if keys are still placeholders
+    if grep -q "JWT_SECRET=change-me" .env 2>/dev/null; then
+        print_info "Regenerating JWT_SECRET..."
+        JWT_SECRET=$($PYTHON_CMD -c "import secrets; print(secrets.token_hex(32))")
+        sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
+        print_ok "JWT_SECRET regenerated"
+    fi
+    if grep -q "ENCRYPTION_KEY=change-me" .env 2>/dev/null; then
+        print_info "Regenerating ENCRYPTION_KEY..."
+        ENCRYPTION_KEY=$($PYTHON_CMD -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+        sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=$ENCRYPTION_KEY|" .env
+        print_ok "ENCRYPTION_KEY regenerated"
+    fi
 fi
 
 # ── Step 5: Initialize database ────────────────────────────────────
