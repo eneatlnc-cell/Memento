@@ -1,58 +1,25 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-build/
-*.egg-info/
-
-# Environment files
+# Secrets — never commit
 .env
 .env.local
 .env.*.local
 
 # Python
-*.pyc
 __pycache__/
-*.pyo
-*.pyd
+*.py[cod]
+*.egg-info/
 .Python
 
-# Database
-*.db
-*.sqlite3
-data/
-
-# Vite
-.vite/
-
-# Logs
-*.log
-logs/
-
-# Virtual environments
+# Virtualenvs
 venv/
 .venv/
 env/
-.env/
 
-# IDE
+# Editor / OS
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Coverage
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-
-# Uploads
-uploads/
-temp/
+# Logs
+*.log

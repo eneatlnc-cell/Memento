@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memento Lite · Agnes 全模态测试台</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #16181f;
+    --panel-2: #1c1f28;
+    --border: #2a2e3a;
+    --text: #e6e8ee;
+    --muted: #8b90a0;
+    --accent: #6ea8fe;
+    --accent-2: #7ee2a8;
+    --danger: #ff6b6b;
+    --radius: 10px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  header h1 span { color: var(--muted); font-weight: 400; }
+  #health { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  #health .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  #health.ok .dot { background: var(--accent-2); }
+  #health.bad .dot { background: var(--danger); }
+  nav { display: flex; gap: 4px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    padding: 12px 16px; cursor: pointer; font-size: 14px; font-family: var(--sans);
+    border-bottom: 2px solid transparent; transition: .15s;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  main { flex: 1; overflow: hidden; position: relative; }
+  .panel { position: absolute; inset: 0; display: none; flex-direction: column; padding: 20px; overflow: auto; }
+  .panel.active { display: flex; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  input[type="text"], textarea, select {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--radius); padding: 10px 12px; font-family: var(--sans); font-size: 14px;
+    outline: none; transition: .15s;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  button.primary {
+    background: var(--accent); color: #0e0f13; border: none; border-radius: var(--radius);
+    padding: 10px 18px; font-weight: 600; cursor: pointer; font-size: 14px; transition: .15s;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .grow { flex: 1; min-width: 220px; }
+  /* Chat */
+  #chat-log { flex: 1; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #0e0f13; }
+  .msg.assistant { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--border); }
+  .msg.error { align-self: center; background: rgba(255,107,107,.12); border: 1px solid var(--danger); color: var(--danger); }
+  .msg .role { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  #chat-input { min-height: 48px; }
+  /* Media outputs */
+  .media-out { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .media-stage { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-height: 220px; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
+  .media-stage .placeholder { color: var(--muted); font-size: 13px; }
+  .media-stage img, .media-stage video { max-width: 100%; max-height: 60vh; border-radius: 8px; }
+  .status-line { font-size: 13px; color: var(--muted); min-height: 20px; }
+  .status-line .pill { background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; font-family: var(--mono); font-size: 12px; }
+  details.raw { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+  details.raw summary { cursor: pointer; padding: 10px 14px; font-size: 12px; color: var(--muted); user-select: none; }
+  details.raw pre { margin: 0; padding: 0 14px 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
+  .hint { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Memento Lite <span>· Agnes AI 全模态测试台</span></h1>
+  <div id="health"><span class="dot"></span><span id="health-text">检查中…</span></div>
+</header>
+<nav>
+  <button class="tab active" data-tab="chat">对话</button>
+  <button class="tab" data-tab="image">图像</button>
+  <button class="tab" data-tab="video">视频</button>
+</nav>
+<main>
+  <!-- Chat -->
+  <section class="panel active" id="panel-chat">
+    <div id="chat-log"></div>
+    <div class="row">
+      <textarea id="chat-input" class="grow" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+      <div class="field">
+        <label>模型</label>
+        <select id="chat-model">
+          <option value="agnes-2.5-flash">agnes-2.5-flash</option>
+          <option value="agnes-2.0-flash">agnes-2.0-flash</option>
+        </select>
+      </div>
+      <button class="primary" id="chat-send">发送</button>
+    </div>
+  </section>
+
+  <!-- Image -->
+  <section class="panel" id="panel-image">
+    <div class="row" style="margin-bottom:14px">
+      <div class="field grow">
+        <label>提示词</label>
+        <input type="text" id="img-prompt" placeholder="一只在月球上弹吉他的猫，赛博朋克风格" />
+      </div>
+      <div class="field">
+        <label>模型</label>
+        <select id="img-model">
+          <option value="agnes-image-2.0-flash">agnes-image-2.0-flash</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>尺寸</label>
+        <select id="img-size">
+          <option>1024x1024</option>
+          <option>1280x720</option>
+          <option>720x1280</option>
+          <option>1664x928</option>
+        </select>
+      </div>
+      <button class="primary" id="img-gen">生成</button>
+    </div>
+    <div class="hint" style="margin-bottom:10px">可选：图生图时填入参考图 URL（留空则文生图）</div>
+    <input type="text" id="img-ref" placeholder="参考图 URL（可选）" style="margin-bottom:14px;width:100%" />
+    <div class="media-out">
+      <div class="status-line" id="img-status"></div>
+      <div class="media-stage" id="img-stage"><span class="placeholder">生成的图片会显示在这里</span></div>
+      <details class="raw"><summary>原始响应 JSON</summary><pre id="img-raw"></pre></details>
+    </div>
+  </section>
+
+  <!-- Video -->
+  <section class="panel" id="panel-video">
+    <div class="row" style="margin-bottom:14px">
+      <div class="field grow">
+        <label>提示词</label>
+        <input type="text" id="vid-prompt" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头" />
+      </div>
+      <div class="field">
+        <label>模型</label>
+        <select id="vid-model">
+          <option value="agnes-video-v2.0">agnes-video-v2.0</option>
+        </select>
+      </div>
+      <button class="primary" id="vid-gen">提交</button>
+    </div>
+    <div class="hint" style="margin-bottom:10px">可选：图生视频时填入首帧图 URL（留空则文生视频）</div>
+    <input type="text" id="vid-ref" placeholder="首帧图 URL（可选）" style="margin-bottom:14px;width:100%" />
+    <div class="media-out">
+      <div class="status-line" id="vid-status"></div>
+      <div class="media-stage" id="vid-stage"><span class="placeholder">视频生成是异步任务，提交后自动轮询</span></div>
+      <details class="raw"><summary>原始响应 JSON</summary><pre id="vid-raw"></pre></details>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ── Tabs ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Health ───────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    const el = $('health'), txt = $('health-text');
+    if (d.agnes_key_configured === 'yes') {
+      el.classList.add('ok'); txt.textContent = '已就绪 · key 已配置';
+    } else {
+      el.classList.add('bad'); txt.textContent = '未配置 AGNES_API_KEY';
+    }
+  } catch {
+    $('health').classList.add('bad');
+    $('health-text').textContent = '服务未启动';
+  }
+}
+checkHealth();
+
+// ── Chat ─────────────────────────────────────────────
+const chatLog = $('chat-log');
+const chatHistory = []; // [{role, content}]
+
+function addMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const lbl = document.createElement('div');
+  lbl.className = 'role';
+  lbl.textContent = role === 'user' ? '你' : role === 'error' ? '错误' : 'Agnes';
+  div.appendChild(lbl);
+  const body = document.createElement('div');
+  body.textContent = text;
+  div.appendChild(body);
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return body;
+}
+
+async function sendChat() {
+  const input = $('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  chatHistory.push({ role: 'user', content: text });
+  addMsg('user', text);
+  const assistantBody = addMsg('assistant', '');
+  $('chat-send').disabled = true;
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory, model: $('chat-model').value }),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      addMsg('error', `HTTP ${resp.status}: ${t}`);
+      return;
+    }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', collected = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+        if (payload === '[DONE]') continue;
+        try {
+          const obj = JSON.parse(payload);
+          if (obj.error) { addMsg('error', obj.error); continue; }
+          const delta = obj.choices?.[0]?.delta?.content;
+          if (delta) { collected += delta; assistantBody.textContent = collected; chatLog.scrollTop = chatLog.scrollHeight; }
+        } catch { /* partial line, ignore */ }
+      }
+    }
+    if (collected) chatHistory.push({ role: 'assistant', content: collected });
+    else assistantBody.textContent = '(空回复)';
+  } catch (e) {
+    addMsg('error', String(e));
+  } finally {
+    $('chat-send').disabled = false;
+  }
+}
+$('chat-send').addEventListener('click', sendChat);
+$('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+
+// ── Image ────────────────────────────────────────────
+async function genImage() {
+  const prompt = $('img-prompt').value.trim();
+  if (!prompt) return;
+  const btn = $('img-gen'); btn.disabled = true;
+  $('img-status').innerHTML = '生成中…';
+  $('img-stage').innerHTML = '<span class="placeholder">生成中，请稍候…</span>';
+  $('img-raw').textContent = '';
+  try {
+    const body = {
+      prompt, model: $('img-model').value, size: $('img-size').value,
+    };
+    const ref = $('img-ref').value.trim();
+    if (ref) body.image = ref;
+    const resp = await fetch('/api/images', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    $('img-raw').textContent = JSON.stringify(data, null, 2);
+    if (!resp.ok) { $('img-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; return; }
+    const url = extractUrl(data);
+    if (url) {
+      $('img-stage').innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url; img.alt = prompt;
+      $('img-stage').appendChild(img);
+      $('img-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+    } else {
+      $('img-status').innerHTML = '<span class="pill">未解析到图片 URL</span> 见下方原始响应';
+    }
+  } catch (e) {
+    $('img-status').innerHTML = `<span class="pill">错误</span> ${e}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('img-gen').addEventListener('click', genImage);
+
+// ── Video ────────────────────────────────────────────
+let vidTimer = null;
+async function genVideo() {
+  const prompt = $('vid-prompt').value.trim();
+  if (!prompt) return;
+  const btn = $('vid-gen'); btn.disabled = true;
+  $('vid-status').innerHTML = '提交中…';
+  $('vid-stage').innerHTML = '<span class="placeholder">提交任务中…</span>';
+  $('vid-raw').textContent = '';
+  try {
+    const body = { prompt, model: $('vid-model').value };
+    const ref = $('vid-ref').value.trim();
+    if (ref) { body.image = ref; body.mode = 'image2video'; }
+    const resp = await fetch('/api/videos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    $('vid-raw').textContent = JSON.stringify(data, null, 2);
+    if (!resp.ok) { $('vid-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; btn.disabled = false; return; }
+    const taskId = extractTaskId(data);
+    if (!taskId) { $('vid-status').innerHTML = '<span class="pill">未解析到任务 ID</span> 见下方原始响应'; btn.disabled = false; return; }
+    $('vid-status').innerHTML = `任务已提交，ID <span class="pill">${taskId}</span>，轮询中…`;
+    pollVideo(taskId, btn);
+  } catch (e) {
+    $('vid-status').innerHTML = `<span class="pill">错误</span> ${e}`;
+    btn.disabled = false;
+  }
+}
+function pollVideo(taskId, btn) {
+  if (vidTimer) clearTimeout(vidTimer);
+  vidTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch(`/api/videos/${taskId}`);
+      const data = await resp.json();
+      $('vid-raw').textContent = JSON.stringify(data, null, 2);
+      const status = extractStatus(data);
+      const url = extractVideoUrl(data);
+      if (url) {
+        $('vid-stage').innerHTML = '';
+        const v = document.createElement('video');
+        v.src = url; v.controls = true; v.style.maxWidth = '100%';
+        $('vid-stage').appendChild(v);
+        $('vid-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+        btn.disabled = false;
+        return;
+      }
+      if (['failed', 'error', 'canceled'].includes(status)) {
+        $('vid-status').innerHTML = `<span class="pill">${status}</span> 见下方原始响应`;
+        btn.disabled = false;
+        return;
+      }
+      $('vid-status').innerHTML = `任务 ID <span class="pill">${taskId}</span> · 状态 <span class="pill">${status || '处理中'}</span>，继续轮询…`;
+      pollVideo(taskId, btn);
+    } catch (e) {
+      $('vid-status').innerHTML = `<span class="pill">轮询错误</span> ${e}，重试中…`;
+      pollVideo(taskId, btn);
+    }
+  }, 3000);
+}
+$('vid-gen').addEventListener('click', genVideo);
+
+// ── Loose field extractors (Agnes response shapes vary) ──
+function extractUrl(d) {
+  if (Array.isArray(d?.data) && d.data[0]?.url) return d.data[0].url;
+  return d?.url || d?.image_url || d?.data?.url || d?.data?.[0]?.url || null;
+}
+function extractTaskId(d) {
+  return d?.id || d?.video_id || d?.task_id || d?.data?.id || d?.data?.video_id || d?.data?.task_id || null;
+}
+function extractStatus(d) {
+  const s = d?.status || d?.state || d?.data?.status || d?.data?.state || '';
+  return String(s).toLowerCase();
+}
+function extractVideoUrl(d) {
+  return d?.video_url || d?.url || d?.output_url || d?.result_url ||
+    d?.data?.video_url || d?.data?.url || d?.data?.output_url ||
+    d?.output?.[0]?.url || d?.results?.[0]?.url || null;
+}
+</script>
+</body>
+</html>

@@ -1,64 +1,60 @@
-"""FastAPI application entry point for Memento."""
+"""Memento Lite — single-process FastAPI app.
 
+Serves the API and the static single-page frontend from one process.
+No database, no auth: just a thin proxy to Agnes AI's three modalities.
+"""
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
+import logging
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from backend.core.database import init_db
-from backend.core.logging import setup_logging
-from backend.middleware.request_id import RequestIDMiddleware
-from backend.routes import auth, chat, config, history, images, providers, videos
+from backend import routes_chat, routes_images, routes_videos
+from backend.config import settings
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Application lifespan: setup logging, initialise database."""
-    setup_logging()
-    await init_db()
-    yield
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("memento")
 
 app = FastAPI(
-    title="Memento",
-    description="AI-powered creative content generation platform",
+    title="Memento Lite",
+    description="Minimal multimodal test console for Agnes AI (chat / image / video).",
     version="1.0.0",
-    lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
 )
 
-# ---------------------------------------------------------------------------
-# Middleware
-# ---------------------------------------------------------------------------
-
+# Permissive CORS — same-origin in production, handy for split dev otherwise.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.add_middleware(RequestIDMiddleware)
-
-# ---------------------------------------------------------------------------
-# Routers
-# ---------------------------------------------------------------------------
-
-app.include_router(auth.router)
-app.include_router(images.router)
-app.include_router(videos.router)
-app.include_router(chat.router)
-app.include_router(history.router)
-app.include_router(providers.router)
-app.include_router(config.router)
+# API routes (registered before the static mount so /api/* wins).
+app.include_router(routes_chat.router)
+app.include_router(routes_images.router)
+app.include_router(routes_videos.router)
 
 
-@app.get("/", tags=["Health"])
-async def root() -> dict[str, str]:
-    """Health check endpoint."""
-    return {"status": "ok", "service": "Memento"}
+@app.get("/api/health")
+async def health() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "agnes_base_url": settings.agnes_api_base_url,
+        "agnes_key_configured": "yes" if settings.agnes_api_key else "no",
+    }
+
+
+# Static single-page frontend — mounted last so it acts as a catch-all.
+_static_dir = Path(__file__).resolve().parent.parent / "static"
+if _static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
+    logger.info("Serving frontend from %s", _static_dir)
+else:
+    logger.warning("static/ directory not found — API-only mode")
