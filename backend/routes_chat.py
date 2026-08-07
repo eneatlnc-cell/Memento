@@ -34,11 +34,15 @@ async def chat(body: ChatRequest) -> Any:
             async for chunk in agnes.chat_stream(messages, body.model):
                 yield chunk
         except httpx.HTTPStatusError as exc:
-            yield _err(f"Upstream error: {exc}")
+            yield _err(f"Agnes returned {exc.response.status_code}: {exc}")
+        except httpx.ConnectError as exc:
+            yield _err(f"[ConnectError] Cannot reach Agnes API: {exc}")
+        except httpx.TimeoutException as exc:
+            yield _err(f"[Timeout] Agnes API timed out: {exc}")
         except RuntimeError as exc:
             yield _err(str(exc))
         except Exception as exc:  # noqa: BLE001
-            yield _err(f"Unexpected error: {exc}")
+            yield _err(f"[{type(exc).__name__}] {exc}")
 
     return StreamingResponse(
         event_stream(),

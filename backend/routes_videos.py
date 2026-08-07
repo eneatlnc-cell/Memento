@@ -36,11 +36,27 @@ async def submit_video(body: VideoRequest) -> Any:
             frame_rate=body.frame_rate,
         )
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=_detail(exc)) from exc
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Agnes returned {exc.response.status_code}: {_detail(exc)}",
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"[ConnectError] Cannot reach Agnes API: {exc}",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=f"[Timeout] Agnes API timed out: {exc}",
+        ) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Video submission failed: {exc}") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"[{type(exc).__name__}] {exc}",
+        ) from exc
 
 
 @router.get("/videos/{task_id}")
@@ -49,9 +65,25 @@ async def video_status(task_id: str) -> Any:
     try:
         return await agnes.query_video(task_id)
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=_detail(exc)) from exc
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Agnes returned {exc.response.status_code}: {_detail(exc)}",
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"[ConnectError] Cannot reach Agnes API: {exc}",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=f"[Timeout] Agnes API timed out: {exc}",
+        ) from exc
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Video query failed: {exc}") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"[{type(exc).__name__}] {exc}",
+        ) from exc
 
 
 def _detail(exc: httpx.HTTPStatusError) -> str:

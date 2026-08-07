@@ -30,11 +30,27 @@ async def create_image(body: ImageRequest) -> Any:
             image=body.image,
         )
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=_detail(exc)) from exc
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Agnes returned {exc.response.status_code}: {_detail(exc)}",
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"[ConnectError] Cannot reach Agnes API: {exc}. Check DNS/firewall/network.",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=f"[Timeout] Agnes API timed out: {exc}",
+        ) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Image generation failed: {exc}") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"[{type(exc).__name__}] {exc}",
+        ) from exc
 
 
 def _detail(exc: httpx.HTTPStatusError) -> str:
