@@ -95,19 +95,25 @@ async def submit_video(
     prompt: str,
     model: str,
     image: str | None = None,
+    width: int = 1152,
+    height: int = 768,
     num_frames: int = 121,
     frame_rate: int = 24,
 ) -> dict[str, Any]:
     """Submit a video task. Returns Agnes' raw JSON (contains video_id/task_id).
 
     Per official docs:
-    - For text-to-video: only model, prompt, num_frames, frame_rate needed.
-    - For image-to-video: pass top-level `image` (string URL), no `mode` needed.
+    - For text-to-video: pass model, prompt, width, height, num_frames, frame_rate.
+    - For image-to-video: add top-level `image` (string URL), no `mode` needed.
     - `mode` is only for keyframes workflow (uses extra_body.image array).
+    - num_frames must follow the 8n+1 rule and be <= 441.
+    - Agnes normalizes width/height to nearest supported resolution tier.
     """
     payload: dict[str, Any] = {
         "prompt": prompt,
         "model": model,
+        "width": width,
+        "height": height,
         "num_frames": num_frames,
         "frame_rate": frame_rate,
     }

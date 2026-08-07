@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     # Agnes AI (OpenAI-compatible). Free official API.
-    agnes_api_base_url: str = "https://apihub.agnes-ai.com/v1"
+    agnes_api_base_url: str = "https://api.agnes-ai.cn/v1"
     agnes_api_key: str = ""
 
     # Server

@@ -166,6 +166,25 @@
           <option value="agnes-video-v2.0">agnes-video-v2.0</option>
         </select>
       </div>
+      <div class="field">
+        <label>尺寸</label>
+        <select id="vid-size">
+          <option value="1152x768">1152×768 (16:9)</option>
+          <option value="768x1152">768×1152 (9:16)</option>
+          <option value="1024x1024">1024×1024 (1:1)</option>
+          <option value="1024x768">1024×768 (4:3)</option>
+          <option value="768x1024">768×1024 (3:4)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>时长</label>
+        <select id="vid-duration">
+          <option value="3">约 3 秒</option>
+          <option value="5" selected>约 5 秒</option>
+          <option value="10">约 10 秒</option>
+          <option value="18">约 18 秒</option>
+        </select>
+      </div>
       <button class="primary" id="vid-gen">提交</button>
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生视频时填入首帧图 URL（留空则文生视频）</div>
@@ -331,7 +350,14 @@ async function genVideo() {
   $('vid-stage').innerHTML = '<span class="placeholder">提交任务中…</span>';
   $('vid-raw').textContent = '';
   try {
-    const body = { prompt, model: $('vid-model').value };
+    const sizeVal = $('vid-size').value.split('x');
+    const body = {
+      prompt,
+      model: $('vid-model').value,
+      width: parseInt(sizeVal[0], 10),
+      height: parseInt(sizeVal[1], 10),
+      duration: parseInt($('vid-duration').value, 10),
+    };
     const ref = $('vid-ref').value.trim();
     if (ref) { body.image = ref; }
     const resp = await fetch('/api/videos', {

@@ -15,25 +15,39 @@ from backend import agnes
 
 router = APIRouter(prefix="/api", tags=["Videos"])
 
+# Duration (seconds) → num_frames at 24fps, following the 8n+1 rule.
+# Per official docs: num_frames must be <= 441 and follow 8n+1.
+_DURATION_FRAMES = {
+    3: 81,    # 3s ≈ 81 frames / 24fps
+    5: 121,   # 5s ≈ 121 frames / 24fps
+    10: 241,  # 10s ≈ 241 frames / 24fps
+    18: 441,  # 18s ≈ 441 frames / 24fps (max)
+}
+_FRAME_RATE = 24
+
 
 class VideoRequest(BaseModel):
     prompt: str
     model: str = "agnes-video-v2.0"
     image: str | None = None  # optional image URL for image-to-video
-    num_frames: int = 121  # ~5 seconds at 24fps (must follow 8n+1 rule)
-    frame_rate: int = 24
+    width: int = 1152
+    height: int = 768
+    duration: int = 5  # seconds; mapped to num_frames internally
 
 
 @router.post("/videos")
 async def submit_video(body: VideoRequest) -> Any:
     """Submit a video generation task. Returns Agnes' raw JSON (task id)."""
+    num_frames = _DURATION_FRAMES.get(body.duration, 121)
     try:
         return await agnes.submit_video(
             prompt=body.prompt,
             model=body.model,
             image=body.image,
-            num_frames=body.num_frames,
-            frame_rate=body.frame_rate,
+            width=body.width,
+            height=body.height,
+            num_frames=num_frames,
+            frame_rate=_FRAME_RATE,
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
