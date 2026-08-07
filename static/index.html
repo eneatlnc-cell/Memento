@@ -333,7 +333,7 @@ async function genVideo() {
   try {
     const body = { prompt, model: $('vid-model').value };
     const ref = $('vid-ref').value.trim();
-    if (ref) { body.image = ref; body.mode = 'image2video'; }
+    if (ref) { body.image = ref; }
     const resp = await fetch('/api/videos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
@@ -385,18 +385,22 @@ $('vid-gen').addEventListener('click', genVideo);
 // ── Loose field extractors (Agnes response shapes vary) ──
 function extractUrl(d) {
   if (Array.isArray(d?.data) && d.data[0]?.url) return d.data[0].url;
+  // Handle base64 output (in case response_format returns b64_json)
+  if (Array.isArray(d?.data) && d.data[0]?.b64_json) return 'data:image/png;base64,' + d.data[0].b64_json;
   return d?.url || d?.image_url || d?.data?.url || d?.data?.[0]?.url || null;
 }
 function extractTaskId(d) {
-  return d?.id || d?.video_id || d?.task_id || d?.data?.id || d?.data?.video_id || d?.data?.task_id || null;
+  // Per docs: video_id is the recommended ID for retrieving results
+  return d?.video_id || d?.id || d?.task_id || d?.data?.video_id || d?.data?.id || d?.data?.task_id || null;
 }
 function extractStatus(d) {
   const s = d?.status || d?.state || d?.data?.status || d?.data?.state || '';
   return String(s).toLowerCase();
 }
 function extractVideoUrl(d) {
-  return d?.video_url || d?.url || d?.output_url || d?.result_url ||
-    d?.data?.video_url || d?.data?.url || d?.data?.output_url ||
+  // Per docs: video URL is in metadata.url when status is completed
+  return d?.metadata?.url || d?.video_url || d?.url || d?.output_url || d?.result_url ||
+    d?.data?.metadata?.url || d?.data?.video_url || d?.data?.url || d?.data?.output_url ||
     d?.output?.[0]?.url || d?.results?.[0]?.url || null;
 }
 </script>

@@ -20,7 +20,8 @@ class VideoRequest(BaseModel):
     prompt: str
     model: str = "agnes-video-v2.0"
     image: str | None = None  # optional image URL for image-to-video
-    mode: str = "text2video"
+    num_frames: int = 121  # ~5 seconds at 24fps (must follow 8n+1 rule)
+    frame_rate: int = 24
 
 
 @router.post("/videos")
@@ -31,7 +32,8 @@ async def submit_video(body: VideoRequest) -> Any:
             prompt=body.prompt,
             model=body.model,
             image=body.image,
-            mode=body.mode,
+            num_frames=body.num_frames,
+            frame_rate=body.frame_rate,
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=_detail(exc)) from exc
