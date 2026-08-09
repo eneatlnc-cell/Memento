@@ -127,11 +127,16 @@
   details.raw pre { margin: 0; padding: 0 14px 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
   .hint { font-size: 12px; color: var(--muted); }
 
-  /* ── Upload overlay (mobile-safe: no programmatic click) ─── */
-  .upload-wrap { position: relative; display: inline-flex; }
-  .upload-wrap > input[type="file"] {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    opacity: 0; cursor: pointer; z-index: 2; border: none; padding: 0; margin: 0;
+  /* ── Upload (label pattern: most compatible with Android WebView) ─── */
+  .upload-label {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 11px 18px; cursor: pointer; font-size: 14px;
+    font-family: var(--sans); transition: .15s; min-height: 44px; white-space: nowrap;
+  }
+  .upload-label:hover { border-color: var(--accent); }
+  .upload-label > input[type="file"] {
+    position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden;
   }
   /* Download button */
   .dl-btn {
@@ -178,7 +183,7 @@
     <span class="key-chip">● Key 已配置</span>
     <span class="key-edit">点击修改</span>
   </div>
-  <div class="key-hint" id="key-hint">Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
+  <div class="key-hint" id="key-hint">Key 保存在本地，不会写入服务器。</div>
 </div>
 
 <nav>
@@ -219,10 +224,9 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生图时上传参考图（留空则文生图）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <div class="upload-wrap">
-        <button class="primary" id="img-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传参考图</button>
+      <label class="upload-label">＋ 上传参考图
         <input type="file" id="img-file" accept="image/*" />
-      </div>
+      </label>
       <span id="img-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="img-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
@@ -261,10 +265,9 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生视频时上传首帧图（留空则文生视频）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <div class="upload-wrap">
-        <button class="primary" id="vid-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传首帧图</button>
+      <label class="upload-label">＋ 上传首帧图
         <input type="file" id="vid-file" accept="image/*" />
-      </div>
+      </label>
       <span id="vid-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="vid-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
@@ -313,7 +316,7 @@ function flashSaved() {
   h.innerHTML = 'Key 已保存到本地。 <span class="saved">✓</span>';
   clearTimeout(savedTimer);
   savedTimer = setTimeout(() => {
-    h.innerHTML = 'Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a>';
+    h.innerHTML = 'Key 保存在本地，不会写入服务器。';
   }, 1800);
 }
 
