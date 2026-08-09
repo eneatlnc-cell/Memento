@@ -95,10 +95,11 @@
   input[type="text"], input[type="password"], textarea, select {
     background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
     border-radius: var(--radius); padding: 11px 12px; font-family: var(--sans); font-size: 14px;
-    outline: none; transition: .15s; min-height: 44px;
+    outline: none; transition: .15s; min-height: 44px; width: 100%;
   }
   input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 80px; }
+  textarea#img-prompt, textarea#vid-prompt { min-height: 56px; }
   button.primary {
     background: var(--accent); color: #0e0f13; border: none; border-radius: var(--radius);
     padding: 11px 18px; font-weight: 600; cursor: pointer; font-size: 14px; transition: .15s; min-height: 44px;
@@ -109,7 +110,7 @@
   .grow { flex: 1; min-width: 220px; }
   /* Media outputs */
   .media-out { flex: 1; display: flex; flex-direction: column; gap: 14px; }
-  .media-stage { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-height: 220px; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
+  .media-stage { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-height: 160px; flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
   .media-stage .placeholder { color: var(--muted); font-size: 13px; text-align: center; }
   .media-stage img, .media-stage video { max-width: 100%; max-height: 60vh; border-radius: 8px; }
   .status-line { font-size: 13px; color: var(--muted); min-height: 20px; }
@@ -164,7 +165,7 @@
     <div class="row controls" style="margin-bottom:14px">
       <div class="field grow">
         <label>提示词</label>
-        <input type="text" id="img-prompt" placeholder="一只在月球上弹吉他的猫，赛博朋克风格" />
+        <textarea id="img-prompt" rows="2" placeholder="一只在月球上弹吉他的猫，赛博朋克风格"></textarea>
       </div>
       <div class="field">
         <label>模型</label>
@@ -201,7 +202,7 @@
     <div class="row controls" style="margin-bottom:14px">
       <div class="field grow">
         <label>提示词</label>
-        <input type="text" id="vid-prompt" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头" />
+        <textarea id="vid-prompt" rows="2" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头"></textarea>
       </div>
       <div class="field">
         <label>模型</label>
@@ -255,6 +256,14 @@ function persistKey() {
   localStorage.setItem(LS_KEY, $('api-key').value.trim());
   flashSaved();
   refreshHealth();
+  updateButtonStates();
+}
+
+// Disable action buttons when no API key — prevents invalid clicks
+function updateButtonStates() {
+  const hasKey = !!getApiKey();
+  $('img-gen').disabled = !hasKey;
+  $('vid-gen').disabled = !hasKey;
 }
 
 let savedTimer = null;
@@ -293,6 +302,7 @@ async function apiFetch(url, opts = {}) {
 // ── Key bar wiring ──────────────────────────────────
 $('api-key').value = getApiKey();
 $('api-key').addEventListener('input', persistKey);
+updateButtonStates();
 
 $('key-eye').addEventListener('click', () => {
   const inp = $('api-key');
