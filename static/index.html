@@ -204,7 +204,7 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生图时上传参考图（留空则文生图）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <input type="file" id="img-file" accept="image/*" style="display:none" />
+      <input type="file" id="img-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" />
       <button class="primary" id="img-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传参考图</button>
       <span id="img-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="img-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
@@ -244,7 +244,7 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生视频时上传首帧图（留空则文生视频）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <input type="file" id="vid-file" accept="image/*" style="display:none" />
+      <input type="file" id="vid-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" />
       <button class="primary" id="vid-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传首帧图</button>
       <span id="vid-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="vid-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
@@ -383,8 +383,9 @@ let imgRefUri = null; // Data URI base64 from upload
 async function uploadFile(inputId, nameId, clearBtnId) {
   const input = $(inputId);
   input.value = '';
-  input.click();
   return new Promise((resolve) => {
+    // Register onchange BEFORE click() — mobile browsers may open the
+    // picker synchronously, causing a race if the handler is set after.
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) { resolve(null); return; }
@@ -402,6 +403,8 @@ async function uploadFile(inputId, nameId, clearBtnId) {
         resolve(null);
       }
     };
+    // Trigger file picker after handler is in place
+    input.click();
   });
 }
 

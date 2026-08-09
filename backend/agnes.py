@@ -47,7 +47,7 @@ async def generate_image(
     ratio: str = "1:1",
     image: str | None = None,
 ) -> dict[str, Any]:
-    extra_body: dict[str, Any] = {"response_format": "url"}
+    extra_body: dict[str, Any] = {}
     if image:
         extra_body["image"] = [image]
 
@@ -56,8 +56,9 @@ async def generate_image(
         "model": model,
         "size": size,
         "ratio": ratio,
-        "extra_body": extra_body,
     }
+    if extra_body:
+        payload["extra_body"] = extra_body
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.post(
             _build_url("/images/generations"),
