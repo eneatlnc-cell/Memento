@@ -127,6 +127,21 @@
   details.raw pre { margin: 0; padding: 0 14px 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
   .hint { font-size: 12px; color: var(--muted); }
 
+  /* ── Upload overlay (mobile-safe: no programmatic click) ─── */
+  .upload-wrap { position: relative; display: inline-flex; }
+  .upload-wrap > input[type="file"] {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer; z-index: 2; border: none; padding: 0; margin: 0;
+  }
+  /* Download button */
+  .dl-btn {
+    background: var(--panel-2); color: var(--accent); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 14px; cursor: pointer; font-size: 13px;
+    font-family: var(--sans); transition: .15s; display: inline-flex; align-items: center; gap: 4px;
+    min-height: 36px; text-decoration: none;
+  }
+  .dl-btn:hover { border-color: var(--accent); }
+
   /* ── Mobile ──────────────────────────────────────── */
   @media (max-width: 640px) {
     header { padding-left: 14px; padding-right: 14px; }
@@ -204,8 +219,10 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生图时上传参考图（留空则文生图）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <input type="file" id="img-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" />
-      <button class="primary" id="img-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传参考图</button>
+      <div class="upload-wrap">
+        <button class="primary" id="img-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传参考图</button>
+        <input type="file" id="img-file" accept="image/*" />
+      </div>
       <span id="img-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="img-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
@@ -244,8 +261,10 @@
     </div>
     <div class="hint" style="margin-bottom:10px">可选：图生视频时上传首帧图（留空则文生视频）</div>
     <div class="row" style="margin-bottom:14px;align-items:center">
-      <input type="file" id="vid-file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" />
-      <button class="primary" id="vid-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传首帧图</button>
+      <div class="upload-wrap">
+        <button class="primary" id="vid-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传首帧图</button>
+        <input type="file" id="vid-file" accept="image/*" />
+      </div>
       <span id="vid-ref-name" style="color:var(--muted);font-size:13px"></span>
       <button id="vid-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
@@ -378,46 +397,70 @@ async function refreshHealth() {
 refreshHealth();
 
 // ── Image ────────────────────────────────────────────
-let imgRefUri = null; // Data URI base64 from upload
 
-async function uploadFile(inputId, nameId, clearBtnId) {
+// Direct onchange handler — no programmatic click() needed since
+// the file input is overlaid on the button (mobile-safe).
+function handleFileSelect(inputId, nameId, clearBtnId, refHolder) {
   const input = $(inputId);
-  input.value = '';
-  return new Promise((resolve) => {
-    // Register onchange BEFORE click() — mobile browsers may open the
-    // picker synchronously, causing a race if the handler is set after.
-    input.onchange = async () => {
-      const file = input.files[0];
-      if (!file) { resolve(null); return; }
-      $(nameId).textContent = file.name;
-      $(clearBtnId).style.display = 'inline';
-      const fd = new FormData();
-      fd.append('file', file);
-      try {
-        const resp = await fetch('/api/upload', { method: 'POST', body: fd });
-        const data = await resp.json();
-        if (!resp.ok) { $(nameId).textContent = '上传失败: ' + (data.detail || resp.status); resolve(null); return; }
-        resolve(data.data_uri);
-      } catch (e) {
-        $(nameId).textContent = '上传失败: ' + e;
-        resolve(null);
-      }
-    };
-    // Trigger file picker after handler is in place
-    input.click();
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    $(nameId).textContent = file.name;
+    $(clearBtnId).style.display = 'inline';
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const resp = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (!resp.ok) { $(nameId).textContent = '上传失败: ' + (data.detail || resp.status); return; }
+      refHolder.uri = data.data_uri;
+    } catch (e) {
+      $(nameId).textContent = '上传失败: ' + e;
+    }
   });
 }
 
-function clearRef(nameId, clearBtnId) {
+function clearRef(nameId, clearBtnId, refHolder) {
   $(nameId).textContent = '';
   $(clearBtnId).style.display = 'none';
-  return null;
+  if (refHolder) refHolder.uri = null;
 }
 
-$('img-upload-btn').addEventListener('click', async () => {
-  imgRefUri = await uploadFile('img-file', 'img-ref-name', 'img-clear-ref') || imgRefUri;
-});
-$('img-clear-ref').addEventListener('click', () => { imgRefUri = clearRef('img-ref-name', 'img-clear-ref'); });
+const imgRef = { uri: null };
+handleFileSelect('img-file', 'img-ref-name', 'img-clear-ref', imgRef);
+$('img-clear-ref').addEventListener('click', () => { clearRef('img-ref-name', 'img-clear-ref', imgRef); });
+
+// ── Download helper (blob-based, avoids CORS / blank new-tab) ──
+async function downloadMedia(url, filename) {
+  try {
+    // For data URIs, convert directly
+    if (url.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+    // For remote URLs, use backend proxy to bypass CORS
+    const proxyUrl = '/api/proxy?url=' + encodeURIComponent(url);
+    const resp = await fetch(proxyUrl);
+    if (!resp.ok) throw new Error('proxy failed: ' + resp.status);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  } catch (e) {
+    // Fallback: open in new tab (may fail on mobile, but last resort)
+    window.open(url, '_blank');
+  }
+}
 
 async function genImage() {
   const prompt = $('img-prompt').value.trim();
@@ -433,7 +476,7 @@ async function genImage() {
       size: $('img-size').value,
       ratio: $('img-ratio').value,
     };
-    if (imgRefUri) body.image = imgRefUri;
+    if (imgRef.uri) body.image = imgRef.uri;
     const resp = await apiFetch('/api/images', {
       method: 'POST', body: JSON.stringify(body),
     });
@@ -446,7 +489,9 @@ async function genImage() {
       const img = document.createElement('img');
       img.src = url; img.alt = prompt;
       $('img-stage').appendChild(img);
-      $('img-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+      const dlId = 'img-dl';
+      $('img-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="${dlId}">⬇ 下载图片</button>`;
+      $(dlId).addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.png`));
     } else {
       $('img-status').innerHTML = '<span class="pill">未解析到图片 URL</span> 见下方原始响应';
     }
@@ -460,12 +505,10 @@ $('img-gen').addEventListener('click', genImage);
 
 // ── Video ────────────────────────────────────────────
 let vidTimer = null;
-let vidRefUri = null; // Data URI base64 from upload
+const vidRef = { uri: null };
 
-$('vid-upload-btn').addEventListener('click', async () => {
-  vidRefUri = await uploadFile('vid-file', 'vid-ref-name', 'vid-clear-ref') || vidRefUri;
-});
-$('vid-clear-ref').addEventListener('click', () => { vidRefUri = clearRef('vid-ref-name', 'vid-clear-ref'); });
+handleFileSelect('vid-file', 'vid-ref-name', 'vid-clear-ref', vidRef);
+$('vid-clear-ref').addEventListener('click', () => { clearRef('vid-ref-name', 'vid-clear-ref', vidRef); });
 
 async function genVideo() {
   const prompt = $('vid-prompt').value.trim();
@@ -483,7 +526,7 @@ async function genVideo() {
       height: parseInt(sizeVal[1], 10),
       duration: parseInt($('vid-duration').value, 10),
     };
-    if (vidRefUri) { body.image = vidRefUri; }
+    if (vidRef.uri) { body.image = vidRef.uri; }
     const resp = await apiFetch('/api/videos', {
       method: 'POST', body: JSON.stringify(body),
     });
@@ -513,7 +556,9 @@ function pollVideo(taskId, btn) {
         const v = document.createElement('video');
         v.src = url; v.controls = true; v.style.maxWidth = '100%';
         $('vid-stage').appendChild(v);
-        $('vid-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+        const dlId = 'vid-dl';
+        $('vid-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="${dlId}">⬇ 下载视频</button>`;
+        $(dlId).addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.mp4`));
         btn.disabled = false;
         return;
       }
