@@ -17,7 +17,8 @@ router = APIRouter(prefix="/api", tags=["Images"])
 class ImageRequest(BaseModel):
     prompt: str
     model: str = "agnes-image-2.1-flash"
-    size: str = "1024x1024"
+    size: str = "1K"
+    ratio: str = "1:1"
     image: str | None = None
 
 
@@ -32,6 +33,7 @@ async def create_image(
             model=body.model,
             size=body.size,
             api_key=api_key,
+            ratio=body.ratio,
             image=body.image,
         )
     except httpx.HTTPStatusError as exc:

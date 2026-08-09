@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0e0f13" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>Memento Lite</title>
+<title>Memento</title>
 <style>
   :root {
     --bg: #0e0f13;
@@ -47,7 +47,6 @@
     background: var(--panel);
   }
   header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
-  header h1 span { color: var(--muted); font-weight: 400; display: none; }
   #health { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   #health .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   #health.ok .dot { background: var(--accent-2); }
@@ -99,7 +98,7 @@
   }
   input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 80px; }
-  textarea#img-prompt, textarea#vid-prompt { min-height: 56px; }
+  textarea.prompt { min-height: 72px; }
   button.primary {
     background: var(--accent); color: #0e0f13; border: none; border-radius: var(--radius);
     padding: 11px 18px; font-weight: 600; cursor: pointer; font-size: 14px; transition: .15s; min-height: 44px;
@@ -122,7 +121,6 @@
 
   /* ── Mobile ──────────────────────────────────────── */
   @media (max-width: 640px) {
-    header h1 span { display: inline; }
     header { padding-left: 14px; padding-right: 14px; }
     #keybar { padding: 8px 12px; }
     nav { padding: 0 8px; }
@@ -142,17 +140,17 @@
 </head>
 <body>
 <header>
-  <h1>Memento Lite <span>· Agnes AI</span></h1>
+  <h1>Memento</h1>
   <div id="health"><span class="dot"></span><span id="health-text">检查中…</span></div>
 </header>
 
 <!-- API Key bar: stored in localStorage only, never sent to server storage -->
 <div id="keybar">
   <div class="keybar-main">
-    <input type="password" id="api-key" placeholder="粘贴你的 Agnes API Key（仅存本地）" autocomplete="off" spellcheck="false" />
+    <input type="password" id="api-key" placeholder="粘贴你的 API Key（仅存本地）" autocomplete="off" spellcheck="false" />
     <button class="ghost" id="key-eye" type="button">显示</button>
   </div>
-  <div id="key-hint">Key 保存在浏览器本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
+  <div id="key-hint">Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
 </div>
 
 <nav>
@@ -162,23 +160,31 @@
 <main>
   <!-- Image -->
   <section class="panel active" id="panel-image">
+    <div class="field" style="margin-bottom:14px">
+      <label>提示词</label>
+      <textarea id="img-prompt" class="prompt" rows="3" placeholder="一只在月球上弹吉他的猫，赛博朋克风格"></textarea>
+    </div>
     <div class="row controls" style="margin-bottom:14px">
-      <div class="field grow">
-        <label>提示词</label>
-        <textarea id="img-prompt" rows="2" placeholder="一只在月球上弹吉他的猫，赛博朋克风格"></textarea>
-      </div>
       <div class="field">
-        <label>模型</label>
-        <select id="img-model">
-          <option value="agnes-image-2.1-flash" selected>agnes-image-2.1-flash</option>
+        <label>分辨率</label>
+        <select id="img-size">
+          <option value="1K" selected>1K</option>
+          <option value="2K">2K</option>
+          <option value="3K">3K</option>
+          <option value="4K">4K</option>
         </select>
       </div>
       <div class="field">
-        <label>尺寸</label>
-        <select id="img-size">
-          <option>1024x1024</option>
-          <option>1024x768</option>
-          <option>768x1024</option>
+        <label>比例</label>
+        <select id="img-ratio">
+          <option value="1:1" selected>1:1</option>
+          <option value="3:4">3:4</option>
+          <option value="4:3">4:3</option>
+          <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
+          <option value="2:3">2:3</option>
+          <option value="3:2">3:2</option>
+          <option value="21:9">21:9</option>
         </select>
       </div>
       <button class="primary" id="img-gen">生成</button>
@@ -199,17 +205,11 @@
 
   <!-- Video -->
   <section class="panel" id="panel-video">
+    <div class="field" style="margin-bottom:14px">
+      <label>提示词</label>
+      <textarea id="vid-prompt" class="prompt" rows="3" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头"></textarea>
+    </div>
     <div class="row controls" style="margin-bottom:14px">
-      <div class="field grow">
-        <label>提示词</label>
-        <textarea id="vid-prompt" rows="2" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头"></textarea>
-      </div>
-      <div class="field">
-        <label>模型</label>
-        <select id="vid-model">
-          <option value="agnes-video-v2.0">agnes-video-v2.0</option>
-        </select>
-      </div>
       <div class="field">
         <label>尺寸</label>
         <select id="vid-size">
@@ -272,7 +272,7 @@ function flashSaved() {
   h.innerHTML = 'Key 已保存到本地。 <span class="saved">✓</span>';
   clearTimeout(savedTimer);
   savedTimer = setTimeout(() => {
-    h.innerHTML = 'Key 保存在浏览器本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a>';
+    h.innerHTML = 'Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a>';
   }, 1800);
 }
 
@@ -289,7 +289,7 @@ async function apiFetch(url, opts = {}) {
   const key = getApiKey();
   if (!key) {
     flashKeyBar();
-    throw new Error('请先在顶部输入你的 Agnes API Key');
+    throw new Error('请先在顶部输入你的 API Key');
   }
   opts.headers = { ...(opts.headers || {}) };
   if (opts.body && !(opts.body instanceof FormData)) {
@@ -354,7 +354,6 @@ async function uploadFile(inputId, nameId, clearBtnId) {
       const fd = new FormData();
       fd.append('file', file);
       try {
-        // /api/upload only converts file→base64, no API key needed
         const resp = await fetch('/api/upload', { method: 'POST', body: fd });
         const data = await resp.json();
         if (!resp.ok) { $(nameId).textContent = '上传失败: ' + (data.detail || resp.status); resolve(null); return; }
@@ -387,7 +386,10 @@ async function genImage() {
   $('img-raw').textContent = '';
   try {
     const body = {
-      prompt, model: $('img-model').value, size: $('img-size').value,
+      prompt,
+      model: 'agnes-image-2.1-flash',
+      size: $('img-size').value,
+      ratio: $('img-ratio').value,
     };
     if (imgRefUri) body.image = imgRefUri;
     const resp = await apiFetch('/api/images', {
@@ -434,7 +436,7 @@ async function genVideo() {
     const sizeVal = $('vid-size').value.split('x');
     const body = {
       prompt,
-      model: $('vid-model').value,
+      model: 'agnes-video-v2.0',
       width: parseInt(sizeVal[0], 10),
       height: parseInt(sizeVal[1], 10),
       duration: parseInt($('vid-duration').value, 10),

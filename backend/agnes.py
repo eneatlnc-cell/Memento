@@ -19,7 +19,7 @@ BASE_URL = "https://api.agnes-ai.cn/v1"
 
 def _build_headers(api_key: str) -> dict[str, str]:
     if not api_key:
-        raise RuntimeError("未设置 API Key，请在页面顶部输入你的 Agnes API Key。")
+        raise RuntimeError("未设置 API Key，请在页面顶部输入你的 API Key。")
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -44,6 +44,7 @@ async def generate_image(
     model: str,
     size: str,
     api_key: str,
+    ratio: str = "1:1",
     image: str | None = None,
 ) -> dict[str, Any]:
     extra_body: dict[str, Any] = {"response_format": "url"}
@@ -54,6 +55,7 @@ async def generate_image(
         "prompt": prompt,
         "model": model,
         "size": size,
+        "ratio": ratio,
         "extra_body": extra_body,
     }
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
