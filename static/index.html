@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0e0f13" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>Memento</title>
+<title>Memento Lite</title>
 <style>
   :root {
     --bg: #0e0f13;
@@ -76,6 +76,14 @@
   #key-hint { font-size: 11px; color: var(--muted); }
   #key-hint .saved { color: var(--accent-2); }
   #key-hint a { color: var(--accent); text-decoration: none; }
+  /* Collapsed key bar: shows a compact status chip, click to expand */
+  #keybar.collapsed .keybar-main { display: none; }
+  #keybar.collapsed .keybar-adv { display: none !important; }
+  #keybar.collapsed .key-hint { display: none; }
+  #keybar.collapsed .keybar-collapsed { display: flex; }
+  .keybar-collapsed { display: none; align-items: center; gap: 8px; cursor: pointer; }
+  .keybar-collapsed .key-chip { font-size: 12px; color: var(--accent-2); font-family: var(--mono); }
+  .keybar-collapsed .key-edit { font-size: 11px; color: var(--muted); }
 
   nav { display: flex; gap: 4px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
   nav button {
@@ -140,7 +148,7 @@
 </head>
 <body>
 <header>
-  <h1>Memento</h1>
+  <h1>Memento Lite</h1>
   <div id="health"><span class="dot"></span><span id="health-text">检查中…</span></div>
 </header>
 
@@ -149,8 +157,13 @@
   <div class="keybar-main">
     <input type="password" id="api-key" placeholder="粘贴你的 API Key（仅存本地）" autocomplete="off" spellcheck="false" />
     <button class="ghost" id="key-eye" type="button">显示</button>
+    <button class="ghost" id="key-save" type="button">提交</button>
   </div>
-  <div id="key-hint">Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
+  <div class="keybar-collapsed" id="keybar-collapsed">
+    <span class="key-chip">● Key 已配置</span>
+    <span class="key-edit">点击修改</span>
+  </div>
+  <div class="key-hint" id="key-hint">Key 保存在本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
 </div>
 
 <nav>
@@ -259,6 +272,15 @@ function persistKey() {
   updateButtonStates();
 }
 
+// Collapse key bar when a key is saved; expand when user wants to edit
+function collapseKeyBar() {
+  $('keybar').classList.add('collapsed');
+}
+function expandKeyBar() {
+  $('keybar').classList.remove('collapsed');
+  $('api-key').focus();
+}
+
 // Disable action buttons when no API key — prevents invalid clicks
 function updateButtonStates() {
   const hasKey = !!getApiKey();
@@ -302,7 +324,20 @@ async function apiFetch(url, opts = {}) {
 // ── Key bar wiring ──────────────────────────────────
 $('api-key').value = getApiKey();
 $('api-key').addEventListener('input', persistKey);
-updateButtonStates();
+
+// Submit button: save key and collapse the input area
+$('key-save').addEventListener('click', () => {
+  persistKey();
+  if (getApiKey()) collapseKeyBar();
+});
+
+// Enter key in input also saves and collapses
+$('api-key').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('key-save').click(); }
+});
+
+// Click collapsed bar to re-expand for editing
+$('keybar-collapsed').addEventListener('click', expandKeyBar);
 
 $('key-eye').addEventListener('click', () => {
   const inp = $('api-key');
@@ -310,6 +345,10 @@ $('key-eye').addEventListener('click', () => {
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; btn.classList.add('active'); }
   else { inp.type = 'password'; btn.textContent = '显示'; btn.classList.remove('active'); }
 });
+
+// On page load: if a key already exists, start collapsed
+if (getApiKey()) collapseKeyBar();
+updateButtonStates();
 
 // ── Tabs ─────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
