@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0e0f13" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Memento Lite</title>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --panel: #16181f;
+    --panel-2: #1c1f28;
+    --border: #2a2e3a;
+    --text: #e6e8ee;
+    --muted: #8b90a0;
+    --accent: #6ea8fe;
+    --accent-2: #7ee2a8;
+    --danger: #ff6b6b;
+    --warn: #f5c451;
+    --radius: 10px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: calc(12px + var(--safe-t)) 20px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  header h1 span { color: var(--muted); font-weight: 400; display: none; }
+  #health { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #health .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  #health.ok .dot { background: var(--accent-2); }
+  #health.warn .dot { background: var(--warn); }
+  #health.bad .dot { background: var(--danger); }
+
+  /* ── Key bar ─────────────────────────────────────── */
+  #keybar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #keybar.flashing { animation: flash 0.6s ease; }
+  @keyframes flash { 0%,100% { background: var(--panel); } 50% { background: rgba(245,196,81,.18); } }
+  .keybar-main { display: flex; gap: 8px; align-items: center; }
+  #api-key { flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; }
+  button.ghost {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 9px 12px; cursor: pointer; font-size: 13px;
+    font-family: var(--sans); transition: .15s; white-space: nowrap;
+  }
+  button.ghost:hover { border-color: var(--accent); }
+  button.ghost.active { border-color: var(--accent); color: var(--accent); }
+  #key-hint { font-size: 11px; color: var(--muted); }
+  #key-hint .saved { color: var(--accent-2); }
+  #key-hint a { color: var(--accent); text-decoration: none; }
+
+  nav { display: flex; gap: 4px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  nav button {
+    background: none; border: none; color: var(--muted);
+    padding: 12px 16px; cursor: pointer; font-size: 14px; font-family: var(--sans);
+    border-bottom: 2px solid transparent; transition: .15s; flex: 1; text-align: center;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  main { flex: 1; overflow: hidden; position: relative; }
+  .panel { position: absolute; inset: 0; display: none; flex-direction: column; padding: 16px; padding-bottom: calc(16px + var(--safe-b)); overflow: auto; }
+  .panel.active { display: flex; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  input[type="text"], input[type="password"], textarea, select {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--radius); padding: 11px 12px; font-family: var(--sans); font-size: 14px;
+    outline: none; transition: .15s; min-height: 44px;
+  }
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  button.primary {
+    background: var(--accent); color: #0e0f13; border: none; border-radius: var(--radius);
+    padding: 11px 18px; font-weight: 600; cursor: pointer; font-size: 14px; transition: .15s; min-height: 44px;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button.primary:active { filter: brightness(.95); }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .grow { flex: 1; min-width: 220px; }
+  /* Media outputs */
+  .media-out { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .media-stage { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-height: 220px; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; }
+  .media-stage .placeholder { color: var(--muted); font-size: 13px; text-align: center; }
+  .media-stage img, .media-stage video { max-width: 100%; max-height: 60vh; border-radius: 8px; }
+  .status-line { font-size: 13px; color: var(--muted); min-height: 20px; }
+  .status-line .pill { background: var(--panel-2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; font-family: var(--mono); font-size: 12px; }
+  details.raw { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+  details.raw summary { cursor: pointer; padding: 10px 14px; font-size: 12px; color: var(--muted); user-select: none; }
+  details.raw pre { margin: 0; padding: 0 14px 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  /* ── Mobile ──────────────────────────────────────── */
+  @media (max-width: 640px) {
+    header h1 span { display: inline; }
+    header { padding-left: 14px; padding-right: 14px; }
+    #keybar { padding: 8px 12px; }
+    nav { padding: 0 8px; }
+    nav button { padding: 12px 8px; font-size: 13px; }
+    .panel { padding: 12px; }
+    .grow { min-width: 100%; }
+    .row { gap: 8px; }
+    .field { width: 100%; }
+    .row.controls > .field { flex: 1 1 calc(50% - 4px); min-width: calc(50% - 4px); }
+    .row.controls > button.primary { flex: 1 1 100%; }
+    .media-stage img, .media-stage video { max-height: 50vh; }
+  }
+  @media (max-width: 380px) {
+    .row.controls > .field { flex: 1 1 100%; min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Memento Lite <span>· Agnes AI</span></h1>
+  <div id="health"><span class="dot"></span><span id="health-text">检查中…</span></div>
+</header>
+
+<!-- API Key bar: stored in localStorage only, never sent to server storage -->
+<div id="keybar">
+  <div class="keybar-main">
+    <input type="password" id="api-key" placeholder="粘贴你的 Agnes API Key（仅存本地）" autocomplete="off" spellcheck="false" />
+    <button class="ghost" id="key-eye" type="button">显示</button>
+  </div>
+  <div id="key-hint">Key 保存在浏览器本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a></div>
+</div>
+
+<nav>
+  <button class="tab active" data-tab="image">图像</button>
+  <button class="tab" data-tab="video">视频</button>
+</nav>
+<main>
+  <!-- Image -->
+  <section class="panel active" id="panel-image">
+    <div class="row controls" style="margin-bottom:14px">
+      <div class="field grow">
+        <label>提示词</label>
+        <input type="text" id="img-prompt" placeholder="一只在月球上弹吉他的猫，赛博朋克风格" />
+      </div>
+      <div class="field">
+        <label>模型</label>
+        <select id="img-model">
+          <option value="agnes-image-2.1-flash" selected>agnes-image-2.1-flash</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>尺寸</label>
+        <select id="img-size">
+          <option>1024x1024</option>
+          <option>1024x768</option>
+          <option>768x1024</option>
+        </select>
+      </div>
+      <button class="primary" id="img-gen">生成</button>
+    </div>
+    <div class="hint" style="margin-bottom:10px">可选：图生图时上传参考图（留空则文生图）</div>
+    <div class="row" style="margin-bottom:14px;align-items:center">
+      <input type="file" id="img-file" accept="image/*" style="display:none" />
+      <button class="primary" id="img-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传参考图</button>
+      <span id="img-ref-name" style="color:var(--muted);font-size:13px"></span>
+      <button id="img-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
+    </div>
+    <div class="media-out">
+      <div class="status-line" id="img-status"></div>
+      <div class="media-stage" id="img-stage"><span class="placeholder">生成的图片会显示在这里</span></div>
+      <details class="raw"><summary>原始响应 JSON</summary><pre id="img-raw"></pre></details>
+    </div>
+  </section>
+
+  <!-- Video -->
+  <section class="panel" id="panel-video">
+    <div class="row controls" style="margin-bottom:14px">
+      <div class="field grow">
+        <label>提示词</label>
+        <input type="text" id="vid-prompt" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头" />
+      </div>
+      <div class="field">
+        <label>模型</label>
+        <select id="vid-model">
+          <option value="agnes-video-v2.0">agnes-video-v2.0</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>尺寸</label>
+        <select id="vid-size">
+          <option value="1152x768">1152×768 (16:9)</option>
+          <option value="768x1152">768×1152 (9:16)</option>
+          <option value="1024x1024">1024×1024 (1:1)</option>
+          <option value="1024x768">1024×768 (4:3)</option>
+          <option value="768x1024">768×1024 (3:4)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>时长</label>
+        <select id="vid-duration">
+          <option value="5" selected>约 5 秒</option>
+          <option value="10">约 10 秒</option>
+        </select>
+      </div>
+      <button class="primary" id="vid-gen">提交</button>
+    </div>
+    <div class="hint" style="margin-bottom:10px">可选：图生视频时上传首帧图（留空则文生视频）</div>
+    <div class="row" style="margin-bottom:14px;align-items:center">
+      <input type="file" id="vid-file" accept="image/*" style="display:none" />
+      <button class="primary" id="vid-upload-btn" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border)">＋ 上传首帧图</button>
+      <span id="vid-ref-name" style="color:var(--muted);font-size:13px"></span>
+      <button id="vid-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
+    </div>
+    <div class="media-out">
+      <div class="status-line" id="vid-status"></div>
+      <div class="media-stage" id="vid-stage"><span class="placeholder">视频生成是异步任务，提交后自动轮询</span></div>
+      <details class="raw"><summary>原始响应 JSON</summary><pre id="vid-raw"></pre></details>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ── Credentials (localStorage only) ─────────────────
+const LS_KEY = 'agnes_api_key';
+
+function getApiKey() { return localStorage.getItem(LS_KEY) || ''; }
+
+function persistKey() {
+  localStorage.setItem(LS_KEY, $('api-key').value.trim());
+  flashSaved();
+  refreshHealth();
+}
+
+let savedTimer = null;
+function flashSaved() {
+  const h = $('key-hint');
+  h.innerHTML = 'Key 已保存到本地。 <span class="saved">✓</span>';
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => {
+    h.innerHTML = 'Key 保存在浏览器本地，不会写入服务器。没有 Key？<a href="https://agnes-ai.com" target="_blank">前往注册</a>';
+  }, 1800);
+}
+
+function flashKeyBar() {
+  const bar = $('keybar');
+  bar.classList.remove('flashing');
+  void bar.offsetWidth; // restart animation
+  bar.classList.add('flashing');
+  $('api-key').focus();
+}
+
+// Unified fetch: injects X-Agnes-Key header
+async function apiFetch(url, opts = {}) {
+  const key = getApiKey();
+  if (!key) {
+    flashKeyBar();
+    throw new Error('请先在顶部输入你的 Agnes API Key');
+  }
+  opts.headers = { ...(opts.headers || {}) };
+  if (opts.body && !(opts.body instanceof FormData)) {
+    opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
+  }
+  opts.headers['X-Agnes-Key'] = key;
+  return fetch(url, opts);
+}
+
+// ── Key bar wiring ──────────────────────────────────
+$('api-key').value = getApiKey();
+$('api-key').addEventListener('input', persistKey);
+
+$('key-eye').addEventListener('click', () => {
+  const inp = $('api-key');
+  const btn = $('key-eye');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; btn.classList.add('active'); }
+  else { inp.type = 'password'; btn.textContent = '显示'; btn.classList.remove('active'); }
+});
+
+// ── Tabs ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Health ───────────────────────────────────────────
+async function refreshHealth() {
+  const el = $('health'), txt = $('health-text');
+  const key = getApiKey();
+  el.classList.remove('ok', 'warn', 'bad');
+  try {
+    const r = await fetch('/api/health');
+    if (!r.ok) throw new Error();
+    if (key) { el.classList.add('ok'); txt.textContent = '服务在线 · Key 已填'; }
+    else { el.classList.add('warn'); txt.textContent = '请输入 API Key'; }
+  } catch {
+    el.classList.add('bad');
+    txt.textContent = key ? '服务未启动' : '服务未启动 · 待填 Key';
+  }
+}
+refreshHealth();
+
+// ── Image ────────────────────────────────────────────
+let imgRefUri = null; // Data URI base64 from upload
+
+async function uploadFile(inputId, nameId, clearBtnId) {
+  const input = $(inputId);
+  input.value = '';
+  input.click();
+  return new Promise((resolve) => {
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) { resolve(null); return; }
+      $(nameId).textContent = file.name;
+      $(clearBtnId).style.display = 'inline';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        // /api/upload only converts file→base64, no API key needed
+        const resp = await fetch('/api/upload', { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (!resp.ok) { $(nameId).textContent = '上传失败: ' + (data.detail || resp.status); resolve(null); return; }
+        resolve(data.data_uri);
+      } catch (e) {
+        $(nameId).textContent = '上传失败: ' + e;
+        resolve(null);
+      }
+    };
+  });
+}
+
+function clearRef(nameId, clearBtnId) {
+  $(nameId).textContent = '';
+  $(clearBtnId).style.display = 'none';
+  return null;
+}
+
+$('img-upload-btn').addEventListener('click', async () => {
+  imgRefUri = await uploadFile('img-file', 'img-ref-name', 'img-clear-ref') || imgRefUri;
+});
+$('img-clear-ref').addEventListener('click', () => { imgRefUri = clearRef('img-ref-name', 'img-clear-ref'); });
+
+async function genImage() {
+  const prompt = $('img-prompt').value.trim();
+  if (!prompt) return;
+  const btn = $('img-gen'); btn.disabled = true;
+  $('img-status').innerHTML = '生成中…';
+  $('img-stage').innerHTML = '<span class="placeholder">生成中，请稍候…</span>';
+  $('img-raw').textContent = '';
+  try {
+    const body = {
+      prompt, model: $('img-model').value, size: $('img-size').value,
+    };
+    if (imgRefUri) body.image = imgRefUri;
+    const resp = await apiFetch('/api/images', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    $('img-raw').textContent = JSON.stringify(data, null, 2);
+    if (!resp.ok) { $('img-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; return; }
+    const url = extractUrl(data);
+    if (url) {
+      $('img-stage').innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url; img.alt = prompt;
+      $('img-stage').appendChild(img);
+      $('img-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+    } else {
+      $('img-status').innerHTML = '<span class="pill">未解析到图片 URL</span> 见下方原始响应';
+    }
+  } catch (e) {
+    $('img-status').innerHTML = `<span class="pill">错误</span> ${e}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('img-gen').addEventListener('click', genImage);
+
+// ── Video ────────────────────────────────────────────
+let vidTimer = null;
+let vidRefUri = null; // Data URI base64 from upload
+
+$('vid-upload-btn').addEventListener('click', async () => {
+  vidRefUri = await uploadFile('vid-file', 'vid-ref-name', 'vid-clear-ref') || vidRefUri;
+});
+$('vid-clear-ref').addEventListener('click', () => { vidRefUri = clearRef('vid-ref-name', 'vid-clear-ref'); });
+
+async function genVideo() {
+  const prompt = $('vid-prompt').value.trim();
+  if (!prompt) return;
+  const btn = $('vid-gen'); btn.disabled = true;
+  $('vid-status').innerHTML = '提交中…';
+  $('vid-stage').innerHTML = '<span class="placeholder">提交任务中…</span>';
+  $('vid-raw').textContent = '';
+  try {
+    const sizeVal = $('vid-size').value.split('x');
+    const body = {
+      prompt,
+      model: $('vid-model').value,
+      width: parseInt(sizeVal[0], 10),
+      height: parseInt(sizeVal[1], 10),
+      duration: parseInt($('vid-duration').value, 10),
+    };
+    if (vidRefUri) { body.image = vidRefUri; }
+    const resp = await apiFetch('/api/videos', {
+      method: 'POST', body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    $('vid-raw').textContent = JSON.stringify(data, null, 2);
+    if (!resp.ok) { $('vid-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; btn.disabled = false; return; }
+    const taskId = extractTaskId(data);
+    if (!taskId) { $('vid-status').innerHTML = '<span class="pill">未解析到任务 ID</span> 见下方原始响应'; btn.disabled = false; return; }
+    $('vid-status').innerHTML = `任务已提交，ID <span class="pill">${taskId}</span>，轮询中…`;
+    pollVideo(taskId, btn);
+  } catch (e) {
+    $('vid-status').innerHTML = `<span class="pill">错误</span> ${e}`;
+    btn.disabled = false;
+  }
+}
+function pollVideo(taskId, btn) {
+  if (vidTimer) clearTimeout(vidTimer);
+  vidTimer = setTimeout(async () => {
+    try {
+      const resp = await apiFetch(`/api/videos/${taskId}`);
+      const data = await resp.json();
+      $('vid-raw').textContent = JSON.stringify(data, null, 2);
+      const status = extractStatus(data);
+      const url = extractVideoUrl(data);
+      if (url) {
+        $('vid-stage').innerHTML = '';
+        const v = document.createElement('video');
+        v.src = url; v.controls = true; v.style.maxWidth = '100%';
+        $('vid-stage').appendChild(v);
+        $('vid-status').innerHTML = `<span class="pill">完成</span> <a href="${url}" target="_blank" style="color:var(--accent)">在新窗口打开</a>`;
+        btn.disabled = false;
+        return;
+      }
+      if (['failed', 'error', 'canceled'].includes(status)) {
+        $('vid-status').innerHTML = `<span class="pill">${status}</span> 见下方原始响应`;
+        btn.disabled = false;
+        return;
+      }
+      $('vid-status').innerHTML = `任务 ID <span class="pill">${taskId}</span> · 状态 <span class="pill">${status || '处理中'}</span>，继续轮询…`;
+      pollVideo(taskId, btn);
+    } catch (e) {
+      $('vid-status').innerHTML = `<span class="pill">轮询错误</span> ${e}，重试中…`;
+      pollVideo(taskId, btn);
+    }
+  }, 3000);
+}
+$('vid-gen').addEventListener('click', genVideo);
+
+// ── Loose field extractors (Agnes response shapes vary) ──
+function extractUrl(d) {
+  if (Array.isArray(d?.data) && d.data[0]?.url) return d.data[0].url;
+  if (Array.isArray(d?.data) && d.data[0]?.b64_json) return 'data:image/png;base64,' + d.data[0].b64_json;
+  return d?.url || d?.image_url || d?.data?.url || d?.data?.[0]?.url || null;
+}
+function extractTaskId(d) {
+  return d?.video_id || d?.id || d?.task_id || d?.data?.video_id || d?.data?.id || d?.data?.task_id || null;
+}
+function extractStatus(d) {
+  const s = d?.status || d?.state || d?.data?.status || d?.data?.state || '';
+  return String(s).toLowerCase();
+}
+function extractVideoUrl(d) {
+  return d?.metadata?.url || d?.video_url || d?.url || d?.output_url || d?.result_url ||
+    d?.data?.metadata?.url || d?.data?.video_url || d?.data?.url || d?.data?.output_url ||
+    d?.output?.[0]?.url || d?.results?.[0]?.url || null;
+}
+</script>
+</body>
+</html>
