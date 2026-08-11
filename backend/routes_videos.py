@@ -19,7 +19,8 @@ _FRAME_RATE = 24
 class VideoRequest(BaseModel):
     prompt: str
     model: str = "agnes-video-v2.0"
-    image: str | None = None
+    image: str | None = None       # single image for image-to-video
+    keyframes: list[str] | None = None  # 2+ images for keyframe animation
     width: int = 1152
     height: int = 768
     duration: int = 5
@@ -37,6 +38,7 @@ async def submit_video(
             model=body.model,
             api_key=api_key,
             image=body.image,
+            keyframes=body.keyframes,
             width=body.width,
             height=body.height,
             num_frames=num_frames,

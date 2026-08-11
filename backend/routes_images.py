@@ -19,7 +19,12 @@ class ImageRequest(BaseModel):
     model: str = "agnes-image-2.1-flash"
     size: str = "1K"
     ratio: str = "1:1"
-    image: str | None = None
+    images: list[str] | None = None  # 0=t2i, 1=i2i, 2+=multi-image
+
+
+class EnhanceRequest(BaseModel):
+    text: str
+    context: str  # image_t2i | image_i2i | image_multi | video_t2v | video_i2v | video_keyframes
 
 
 @router.post("/images")
@@ -34,8 +39,36 @@ async def create_image(
             size=body.size,
             api_key=api_key,
             ratio=body.ratio,
-            image=body.image,
+            images=body.images,
         )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Agnes returned {exc.response.status_code}: {_detail(exc)}",
+        ) from exc
+    except httpx.ConnectError as exc:
+        raise HTTPException(status_code=502, detail=f"[ConnectError] {exc}") from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(status_code=504, detail=f"[Timeout] {exc}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"[{type(exc).__name__}] {exc}") from exc
+
+
+@router.post("/enhance")
+async def enhance_prompt(
+    body: EnhanceRequest,
+    api_key: str = Depends(get_api_key),
+) -> dict[str, str]:
+    """Use agnes-2.0-flash to expand a short prompt into a precise English one."""
+    try:
+        result = await agnes.enhance_prompt(
+            text=body.text,
+            context=body.context,
+            api_key=api_key,
+        )
+        return {"prompt": result}
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=exc.response.status_code,

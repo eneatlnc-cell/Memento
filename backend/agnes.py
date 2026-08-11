@@ -45,20 +45,17 @@ async def generate_image(
     size: str,
     api_key: str,
     ratio: str = "1:1",
-    image: str | None = None,
+    images: list[str] | None = None,
 ) -> dict[str, Any]:
-    extra_body: dict[str, Any] = {}
-    if image:
-        extra_body["image"] = [image]
-
+    """Generate image. 0 images = t2i, 1 = i2i, 2+ = multi-image composition."""
     payload: dict[str, Any] = {
         "prompt": prompt,
         "model": model,
         "size": size,
         "ratio": ratio,
     }
-    if extra_body:
-        payload["extra_body"] = extra_body
+    if images:
+        payload["extra_body"] = {"image": images}
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.post(
             _build_url("/images/generations"),
@@ -75,11 +72,18 @@ async def submit_video(
     model: str,
     api_key: str,
     image: str | None = None,
+    keyframes: list[str] | None = None,
     width: int = 1152,
     height: int = 768,
     num_frames: int = 121,
     frame_rate: int = 24,
 ) -> dict[str, Any]:
+    """Submit video task.
+
+    - No image/keyframes: text-to-video
+    - image (single): image-to-video (top-level ``image`` field)
+    - keyframes (2+): keyframe animation (``extra_body.image`` + ``mode: keyframes``)
+    """
     payload: dict[str, Any] = {
         "prompt": prompt,
         "model": model,
@@ -90,6 +94,11 @@ async def submit_video(
     }
     if image:
         payload["image"] = image
+    if keyframes and len(keyframes) >= 2:
+        payload["extra_body"] = {
+            "image": keyframes,
+            "mode": "keyframes",
+        }
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.post(
             _build_url("/videos"),
@@ -109,3 +118,77 @@ async def query_video(
         resp = await client.get(url, headers=_build_headers(api_key))
         resp.raise_for_status()
         return resp.json()
+
+
+# ── Prompt enhancement (text model) ────────────────────────────────
+_CONTEXT_MAP: dict[str, str] = {
+    "image_t2i": (
+        "Text-to-image generation.\n"
+        "Structure: [Subject] + [Scene/Environment] + [Style] + [Lighting] "
+        "+ [Composition] + [Quality]"
+    ),
+    "image_i2i": (
+        "Image-to-image editing.\n"
+        "Structure: [Change request] + [New style/scene] + [Elements to add "
+        "or remove] + [Elements to preserve]"
+    ),
+    "image_multi": (
+        "Multi-image composition.\n"
+        "Structure: [Reference image roles] + [Target scene] + [Relationship "
+        "between images] + [Style/Lighting/Composition]"
+    ),
+    "video_t2v": (
+        "Text-to-video generation.\n"
+        "Structure: [Subject] + [Action] + [Scene] + [Camera movement] + "
+        "[Lighting] + [Style]"
+    ),
+    "video_i2v": (
+        "Image-to-video generation.\n"
+        "Describe what should move and which key subject elements should "
+        "remain stable. Add [Camera movement] + [Style]."
+    ),
+    "video_keyframes": (
+        "Keyframe animation.\n"
+        "Describe the smooth transition relationship between keyframes. "
+        "Add [Camera movement] + [Style]."
+    ),
+}
+
+
+async def enhance_prompt(
+    text: str,
+    context: str,
+    api_key: str,
+) -> str:
+    """Use agnes-2.0-flash to expand a short prompt into a precise English one."""
+    structure = _CONTEXT_MAP.get(context, _CONTEXT_MAP["image_t2i"])
+    system = (
+        "You are a prompt engineer for AI image/video generation. "
+        "Expand the user's short description into a precise English prompt.\n\n"
+        f"Current scenario: {structure}\n\n"
+        "Rules:\n"
+        "1. Output plain English text only — no explanations, no quotes\n"
+        "2. Follow the structure above strictly\n"
+        "3. If the input is Chinese, translate to English\n"
+        "4. Preserve the user's original intent — only expand and optimize\n"
+        "5. Do not invent specific details the user didn't mention; "
+        "use stylistic descriptions to fill gaps"
+    )
+    payload = {
+        "model": "agnes-2.0-flash",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": text},
+        ],
+        "max_tokens": 512,
+        "temperature": 0.7,
+    }
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
+        resp = await client.post(
+            _build_url("/chat/completions"),
+            json=payload,
+            headers=_build_headers(api_key),
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()

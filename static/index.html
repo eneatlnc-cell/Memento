@@ -75,10 +75,8 @@
   button.ghost.active { border-color: var(--accent); color: var(--accent); }
   #key-hint { font-size: 11px; color: var(--muted); }
   #key-hint .saved { color: var(--accent-2); }
-  #key-hint a { color: var(--accent); text-decoration: none; }
-  /* Collapsed key bar: shows a compact status chip, click to expand */
+  /* Collapsed key bar */
   #keybar.collapsed .keybar-main { display: none; }
-  #keybar.collapsed .keybar-adv { display: none !important; }
   #keybar.collapsed .key-hint { display: none; }
   #keybar.collapsed .keybar-collapsed { display: flex; }
   .keybar-collapsed { display: none; align-items: center; gap: 8px; cursor: pointer; }
@@ -127,7 +125,18 @@
   details.raw pre { margin: 0; padding: 0 14px 14px; font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
   .hint { font-size: 12px; color: var(--muted); }
 
-  /* ── Upload (label pattern: most compatible with Android WebView) ─── */
+  /* ── Prompt row with enhance button ─── */
+  .prompt-row { display: flex; gap: 8px; align-items: flex-end; }
+  .prompt-row textarea { flex: 1; }
+  .enhance-btn {
+    background: var(--panel-2); color: var(--accent); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0 14px; cursor: pointer; font-size: 18px;
+    min-height: 44px; flex-shrink: 0; transition: .15s; line-height: 1;
+  }
+  .enhance-btn:hover { border-color: var(--accent); }
+  .enhance-btn:disabled { opacity: .5; cursor: wait; }
+
+  /* ── Upload (label pattern: Android WebView compatible) ─── */
   .upload-label {
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
@@ -138,6 +147,24 @@
   .upload-label > input[type="file"] {
     position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden;
   }
+  /* Thumbnail grid for multi-image upload */
+  .thumb-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .thumb-item {
+    position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-item .thumb-remove {
+    position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
+    background: rgba(0,0,0,.7); color: #fff; border: none; border-radius: 50%;
+    font-size: 12px; line-height: 18px; text-align: center; cursor: pointer; padding: 0;
+  }
+  .thumb-item .thumb-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,.6); color: #fff; font-size: 10px; text-align: center;
+    line-height: 16px;
+  }
+
   /* Download button */
   .dl-btn {
     background: var(--panel-2); color: var(--accent); border: 1px solid var(--border);
@@ -160,6 +187,8 @@
     .row.controls > .field { flex: 1 1 calc(50% - 4px); min-width: calc(50% - 4px); }
     .row.controls > button.primary { flex: 1 1 100%; }
     .media-stage img, .media-stage video { max-height: 50vh; }
+    .prompt-row { flex-wrap: wrap; }
+    .enhance-btn { flex: 0 0 auto; }
   }
   @media (max-width: 380px) {
     .row.controls > .field { flex: 1 1 100%; min-width: 100%; }
@@ -195,7 +224,10 @@
   <section class="panel active" id="panel-image">
     <div class="field" style="margin-bottom:14px">
       <label>提示词</label>
-      <textarea id="img-prompt" class="prompt" rows="3" placeholder="一只在月球上弹吉他的猫，赛博朋克风格"></textarea>
+      <div class="prompt-row">
+        <textarea id="img-prompt" class="prompt" rows="3" placeholder="一只在月球上弹吉他的猫，赛博朋克风格"></textarea>
+        <button class="enhance-btn" id="img-enhance" type="button" title="智能扩写提示词">✨</button>
+      </div>
     </div>
     <div class="row controls" style="margin-bottom:14px">
       <div class="field">
@@ -222,15 +254,14 @@
       </div>
       <button class="primary" id="img-gen">生成</button>
     </div>
-    <div class="hint" style="margin-bottom:10px">可选：图生图时上传参考图（留空则文生图）</div>
-    <div class="row" style="margin-bottom:14px;align-items:center">
-      <label class="upload-label">＋ 上传参考图
+    <div class="hint" style="margin-bottom:6px">参考图：留空=文生图，1张=图生图，多张=主体替换/多图合成（最多4张）</div>
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <label class="upload-label" id="img-upload-label">＋ 添加参考图
         <input type="file" id="img-file" accept="image/*" />
       </label>
-      <span id="img-ref-name" style="color:var(--muted);font-size:13px"></span>
-      <button id="img-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
-    <div class="media-out">
+    <div class="thumb-grid" id="img-thumbs"></div>
+    <div class="media-out" style="margin-top:14px">
       <div class="status-line" id="img-status"></div>
       <div class="media-stage" id="img-stage"><span class="placeholder">生成的图片会显示在这里</span></div>
       <details class="raw"><summary>原始响应 JSON</summary><pre id="img-raw"></pre></details>
@@ -241,7 +272,10 @@
   <section class="panel" id="panel-video">
     <div class="field" style="margin-bottom:14px">
       <label>提示词</label>
-      <textarea id="vid-prompt" class="prompt" rows="3" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头"></textarea>
+      <div class="prompt-row">
+        <textarea id="vid-prompt" class="prompt" rows="3" placeholder="一只金毛在海滩奔跑，夕阳，电影感镜头"></textarea>
+        <button class="enhance-btn" id="vid-enhance" type="button" title="智能扩写提示词">✨</button>
+      </div>
     </div>
     <div class="row controls" style="margin-bottom:14px">
       <div class="field">
@@ -263,15 +297,14 @@
       </div>
       <button class="primary" id="vid-gen">提交</button>
     </div>
-    <div class="hint" style="margin-bottom:10px">可选：图生视频时上传首帧图（留空则文生视频）</div>
-    <div class="row" style="margin-bottom:14px;align-items:center">
-      <label class="upload-label">＋ 上传首帧图
+    <div class="hint" style="margin-bottom:6px">参考图：留空=文生视频，1张=首帧参考，2张=首尾帧，3-5张=多关键帧过渡</div>
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <label class="upload-label" id="vid-upload-label">＋ 添加关键帧
         <input type="file" id="vid-file" accept="image/*" />
       </label>
-      <span id="vid-ref-name" style="color:var(--muted);font-size:13px"></span>
-      <button id="vid-clear-ref" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">移除</button>
     </div>
-    <div class="media-out">
+    <div class="thumb-grid" id="vid-thumbs"></div>
+    <div class="media-out" style="margin-top:14px">
       <div class="status-line" id="vid-status"></div>
       <div class="media-stage" id="vid-stage"><span class="placeholder">视频生成是异步任务，提交后自动轮询</span></div>
       <details class="raw"><summary>原始响应 JSON</summary><pre id="vid-raw"></pre></details>
@@ -294,16 +327,9 @@ function persistKey() {
   updateButtonStates();
 }
 
-// Collapse key bar when a key is saved; expand when user wants to edit
-function collapseKeyBar() {
-  $('keybar').classList.add('collapsed');
-}
-function expandKeyBar() {
-  $('keybar').classList.remove('collapsed');
-  $('api-key').focus();
-}
+function collapseKeyBar() { $('keybar').classList.add('collapsed'); }
+function expandKeyBar() { $('keybar').classList.remove('collapsed'); $('api-key').focus(); }
 
-// Disable action buttons when no API key — prevents invalid clicks
 function updateButtonStates() {
   const hasKey = !!getApiKey();
   $('img-gen').disabled = !hasKey;
@@ -315,26 +341,20 @@ function flashSaved() {
   const h = $('key-hint');
   h.innerHTML = 'Key 已保存到本地。 <span class="saved">✓</span>';
   clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => {
-    h.innerHTML = 'Key 保存在本地，不会写入服务器。';
-  }, 1800);
+  savedTimer = setTimeout(() => { h.innerHTML = 'Key 保存在本地，不会写入服务器。'; }, 1800);
 }
 
 function flashKeyBar() {
   const bar = $('keybar');
   bar.classList.remove('flashing');
-  void bar.offsetWidth; // restart animation
+  void bar.offsetWidth;
   bar.classList.add('flashing');
   $('api-key').focus();
 }
 
-// Unified fetch: injects X-Agnes-Key header
 async function apiFetch(url, opts = {}) {
   const key = getApiKey();
-  if (!key) {
-    flashKeyBar();
-    throw new Error('请先在顶部输入你的 API Key');
-  }
+  if (!key) { flashKeyBar(); throw new Error('请先在顶部输入你的 API Key'); }
   opts.headers = { ...(opts.headers || {}) };
   if (opts.body && !(opts.body instanceof FormData)) {
     opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
@@ -346,29 +366,14 @@ async function apiFetch(url, opts = {}) {
 // ── Key bar wiring ──────────────────────────────────
 $('api-key').value = getApiKey();
 $('api-key').addEventListener('input', persistKey);
-
-// Submit button: save key and collapse the input area
-$('key-save').addEventListener('click', () => {
-  persistKey();
-  if (getApiKey()) collapseKeyBar();
-});
-
-// Enter key in input also saves and collapses
-$('api-key').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); $('key-save').click(); }
-});
-
-// Click collapsed bar to re-expand for editing
+$('key-save').addEventListener('click', () => { persistKey(); if (getApiKey()) collapseKeyBar(); });
+$('api-key').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('key-save').click(); } });
 $('keybar-collapsed').addEventListener('click', expandKeyBar);
-
 $('key-eye').addEventListener('click', () => {
-  const inp = $('api-key');
-  const btn = $('key-eye');
+  const inp = $('api-key'), btn = $('key-eye');
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; btn.classList.add('active'); }
   else { inp.type = 'password'; btn.textContent = '显示'; btn.classList.remove('active'); }
 });
-
-// On page load: if a key already exists, start collapsed
 if (getApiKey()) collapseKeyBar();
 updateButtonStates();
 
@@ -399,71 +404,125 @@ async function refreshHealth() {
 }
 refreshHealth();
 
-// ── Image ────────────────────────────────────────────
+// ── Multi-image upload manager ──────────────────────
+function createImageManager(fileInputId, thumbsContainerId, labelId, maxImages) {
+  const images = []; // array of { uri, name }
+  const input = $(fileInputId);
+  const thumbsEl = $(thumbsContainerId);
+  const labelEl = $(labelId);
 
-// Direct onchange handler — no programmatic click() needed since
-// the file input is overlaid on the button (mobile-safe).
-function handleFileSelect(inputId, nameId, clearBtnId, refHolder) {
-  const input = $(inputId);
+  function render() {
+    thumbsEl.innerHTML = '';
+    images.forEach((img, i) => {
+      const item = document.createElement('div');
+      item.className = 'thumb-item';
+      const im = document.createElement('img');
+      im.src = img.uri;
+      item.appendChild(im);
+      const lbl = document.createElement('div');
+      lbl.className = 'thumb-label';
+      lbl.textContent = `#${i + 1}`;
+      item.appendChild(lbl);
+      const rm = document.createElement('button');
+      rm.className = 'thumb-remove';
+      rm.textContent = '×';
+      rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); images.splice(i, 1); render(); updateLabel(); });
+      item.appendChild(rm);
+      thumbsEl.appendChild(item);
+    });
+  }
+
+  function updateLabel() {
+    if (images.length >= maxImages) {
+      labelEl.style.opacity = '0.4';
+      labelEl.style.pointerEvents = 'none';
+    } else {
+      labelEl.style.opacity = '1';
+      labelEl.style.pointerEvents = 'auto';
+    }
+  }
+
   input.addEventListener('change', async () => {
     const file = input.files[0];
     if (!file) return;
-    $(nameId).textContent = file.name;
-    $(clearBtnId).style.display = 'inline';
+    if (images.length >= maxImages) return;
+    input.value = '';
     const fd = new FormData();
     fd.append('file', file);
     try {
       const resp = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await resp.json();
-      if (!resp.ok) { $(nameId).textContent = '上传失败: ' + (data.detail || resp.status); return; }
-      refHolder.uri = data.data_uri;
+      if (!resp.ok) { alert('上传失败: ' + (data.detail || resp.status)); return; }
+      images.push({ uri: data.data_uri, name: file.name });
+      render();
+      updateLabel();
     } catch (e) {
-      $(nameId).textContent = '上传失败: ' + e;
+      alert('上传失败: ' + e);
     }
   });
+
+  return {
+    images,
+    getUris: () => images.map(i => i.uri),
+    clear: () => { images.length = 0; render(); updateLabel(); },
+  };
 }
 
-function clearRef(nameId, clearBtnId, refHolder) {
-  $(nameId).textContent = '';
-  $(clearBtnId).style.display = 'none';
-  if (refHolder) refHolder.uri = null;
+// ── Smart prompt enhance ────────────────────────────
+async function enhancePrompt(textareaId, btnId, context) {
+  const ta = $(textareaId);
+  const btn = $(btnId);
+  const text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const resp = await apiFetch('/api/enhance', {
+      method: 'POST',
+      body: JSON.stringify({ text, context }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { alert('扩写失败: ' + (data.detail || resp.status)); return; }
+    if (data.prompt) { ta.value = data.prompt; ta.focus(); }
+  } catch (e) {
+    alert('扩写失败: ' + e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨';
+  }
 }
 
-const imgRef = { uri: null };
-handleFileSelect('img-file', 'img-ref-name', 'img-clear-ref', imgRef);
-$('img-clear-ref').addEventListener('click', () => { clearRef('img-ref-name', 'img-clear-ref', imgRef); });
-
-// ── Download helper (blob-based, avoids CORS / blank new-tab) ──
+// ── Download helper ─────────────────────────────────
 async function downloadMedia(url, filename) {
   try {
-    // For data URIs, convert directly
     if (url.startsWith('data:')) {
       const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
       return;
     }
-    // For remote URLs, use backend proxy to bypass CORS
     const proxyUrl = '/api/proxy?url=' + encodeURIComponent(url);
     const resp = await fetch(proxyUrl);
     if (!resp.ok) throw new Error('proxy failed: ' + resp.status);
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = blobUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   } catch (e) {
-    // Fallback: open in new tab (may fail on mobile, but last resort)
     window.open(url, '_blank');
   }
 }
+
+// ── Image panel ─────────────────────────────────────
+const imgMgr = createImageManager('img-file', 'img-thumbs', 'img-upload-label', 4);
+
+$('img-enhance').addEventListener('click', () => {
+  const ctx = imgMgr.images.length === 0 ? 'image_t2i'
+            : imgMgr.images.length === 1 ? 'image_i2i' : 'image_multi';
+  enhancePrompt('img-prompt', 'img-enhance', ctx);
+});
 
 async function genImage() {
   const prompt = $('img-prompt').value.trim();
@@ -479,10 +538,9 @@ async function genImage() {
       size: $('img-size').value,
       ratio: $('img-ratio').value,
     };
-    if (imgRef.uri) body.image = imgRef.uri;
-    const resp = await apiFetch('/api/images', {
-      method: 'POST', body: JSON.stringify(body),
-    });
+    const uris = imgMgr.getUris();
+    if (uris.length > 0) body.images = uris;
+    const resp = await apiFetch('/api/images', { method: 'POST', body: JSON.stringify(body) });
     const data = await resp.json();
     $('img-raw').textContent = JSON.stringify(data, null, 2);
     if (!resp.ok) { $('img-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; return; }
@@ -492,9 +550,8 @@ async function genImage() {
       const img = document.createElement('img');
       img.src = url; img.alt = prompt;
       $('img-stage').appendChild(img);
-      const dlId = 'img-dl';
-      $('img-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="${dlId}">⬇ 下载图片</button>`;
-      $(dlId).addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.png`));
+      $('img-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="img-dl">⬇ 下载图片</button>`;
+      $('img-dl').addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.png`));
     } else {
       $('img-status').innerHTML = '<span class="pill">未解析到图片 URL</span> 见下方原始响应';
     }
@@ -506,12 +563,15 @@ async function genImage() {
 }
 $('img-gen').addEventListener('click', genImage);
 
-// ── Video ────────────────────────────────────────────
+// ── Video panel ─────────────────────────────────────
 let vidTimer = null;
-const vidRef = { uri: null };
+const vidMgr = createImageManager('vid-file', 'vid-thumbs', 'vid-upload-label', 5);
 
-handleFileSelect('vid-file', 'vid-ref-name', 'vid-clear-ref', vidRef);
-$('vid-clear-ref').addEventListener('click', () => { clearRef('vid-ref-name', 'vid-clear-ref', vidRef); });
+$('vid-enhance').addEventListener('click', () => {
+  const ctx = vidMgr.images.length === 0 ? 'video_t2v'
+            : vidMgr.images.length === 1 ? 'video_i2v' : 'video_keyframes';
+  enhancePrompt('vid-prompt', 'vid-enhance', ctx);
+});
 
 async function genVideo() {
   const prompt = $('vid-prompt').value.trim();
@@ -529,13 +589,16 @@ async function genVideo() {
       height: parseInt(sizeVal[1], 10),
       duration: parseInt($('vid-duration').value, 10),
     };
-    if (vidRef.uri) { body.image = vidRef.uri; }
-    const resp = await apiFetch('/api/videos', {
-      method: 'POST', body: JSON.stringify(body),
-    });
+    const uris = vidMgr.getUris();
+    if (uris.length === 1) {
+      body.image = uris[0];                   // single image → top-level image
+    } else if (uris.length >= 2) {
+      body.keyframes = uris;                   // 2+ → keyframe animation
+    }
+    const resp = await apiFetch('/api/videos', { method: 'POST', body: JSON.stringify(body) });
     const data = await resp.json();
     $('vid-raw').textContent = JSON.stringify(data, null, 2);
-    if (!resp.ok) { $('vid-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; btn.disabled = false; return; }
+    if (!resp.ok) { $('img-status').innerHTML = ''; $('vid-status').innerHTML = `<span class="pill">失败</span> ${data.detail || resp.status}`; btn.disabled = false; return; }
     const taskId = extractTaskId(data);
     if (!taskId) { $('vid-status').innerHTML = '<span class="pill">未解析到任务 ID</span> 见下方原始响应'; btn.disabled = false; return; }
     $('vid-status').innerHTML = `任务已提交，ID <span class="pill">${taskId}</span>，轮询中…`;
@@ -559,9 +622,8 @@ function pollVideo(taskId, btn) {
         const v = document.createElement('video');
         v.src = url; v.controls = true; v.style.maxWidth = '100%';
         $('vid-stage').appendChild(v);
-        const dlId = 'vid-dl';
-        $('vid-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="${dlId}">⬇ 下载视频</button>`;
-        $(dlId).addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.mp4`));
+        $('vid-status').innerHTML = `<span class="pill">完成</span> <button class="dl-btn" id="vid-dl">⬇ 下载视频</button>`;
+        $('vid-dl').addEventListener('click', () => downloadMedia(url, `memento_${Date.now()}.mp4`));
         btn.disabled = false;
         return;
       }
@@ -580,7 +642,7 @@ function pollVideo(taskId, btn) {
 }
 $('vid-gen').addEventListener('click', genVideo);
 
-// ── Loose field extractors (Agnes response shapes vary) ──
+// ── Loose field extractors ──
 function extractUrl(d) {
   if (Array.isArray(d?.data) && d.data[0]?.url) return d.data[0].url;
   if (Array.isArray(d?.data) && d.data[0]?.b64_json) return 'data:image/png;base64,' + d.data[0].b64_json;
